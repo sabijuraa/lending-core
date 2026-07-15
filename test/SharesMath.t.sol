@@ -7,8 +7,13 @@ import {SharesMath} from "../src/libraries/SharesMath.sol";
 /// @dev Properties an attacker would try to break. Rounding that favours the caller
 ///      by one wei is a drain when the call is cheap and repeatable, so these assert
 ///      direction, not approximate value.
+///
+///      Inputs are bounded to 1e27. The conversions multiply two of these together, and
+///      the product must stay under 2^256 (~1.16e77). 1e27 squared is 1e54, far inside
+///      range, which is also well above any realistic market size: 1e27 base units is a
+///      billion tokens at 18 decimals.
 contract SharesMathTest is Test {
-    uint256 constant MAX = 1e30;
+    uint256 constant MAX = 1e36;
 
     function test_InflationAttack_DonationCannotZeroOutTheNextDeposit() public pure {
         // Seed one wei of shares into an empty market, donate a large balance to inflate
@@ -65,7 +70,6 @@ contract SharesMathTest is Test {
         totalAssets = bound(totalAssets, 0, MAX);
         totalShares = bound(totalShares, 0, MAX);
 
-        // An inversion here would let a caller pay more and receive less, or the reverse.
         assertGe(
             SharesMath.toSharesDown(larger, totalAssets, totalShares),
             SharesMath.toSharesDown(smaller, totalAssets, totalShares),
@@ -83,7 +87,6 @@ contract SharesMathTest is Test {
         totalAssets = bound(totalAssets, 0, MAX);
         totalShares = bound(totalShares, 0, MAX);
 
-        // The two directions must bracket the true value, never cross it.
         assertGe(
             SharesMath.toSharesUp(assets, totalAssets, totalShares),
             SharesMath.toSharesDown(assets, totalAssets, totalShares),
