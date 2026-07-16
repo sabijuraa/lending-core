@@ -134,3 +134,81 @@ contract LendingCoreTest is Test {
         assertLe(gained, amount, "withdrew more than supplied");
     }
 }
+
+// --- borrow-side tests, appended for commit 6 -------------------------------
+
+contract LendingCoreBorrowTest is Test {
+    LendingCore core;
+    MockERC20 loan;
+    MockERC20 collateral;
+    MarketParams params;
+
+    address supplier = address(0xA11CE);
+    address borrower = address(0xB0B);
+
+    function setUp() public {
+        core = new LendingCore();
+        loan = new MockERC20();
+        collateral = new MockERC20();
+
+        params = MarketParams({
+            loanToken: address(loan),
+            collateralToken: address(collateral),
+            oracle: IOracle(address(new MockOracle())), // price 1e36 => 1:1
+            irm: IInterestRateModel(address(new MockIRM())),
+            lltv: 0.8e18,
+            maxStaleness: 1 hours
+        });
+        core.createMarket(params);
+
+        loan.mint(supplier, 1_000_000e18);
+        vm.prank(supplier);
+        loan.approve(address(core), type(uint256).max);
+        vm.prank(supplier);
+        core.supply(params, 100_000e18, supplier);
+
+        collateral.mint(borrower, 1_000e18);
+        vm.prank(borrower);
+        collateral.approve(address(core), type(uint256).max);
+        vm.prank(borrower);
+        loan.approve(address(core), type(uint256).max);
+    }
+
+    function test_BorrowUpToLimitSucceeds() public {
+        vm.startPrank(borrower);
+        core.supplyCollateral(params, 100e18, borrower);
+        // price 1:1, 80% LLTV => 80 borrowable against 100 collateral.
+        core.borrow(params, 80e18, borrower, borrower);
+        vm.stopPrank();
+        assertEq(loan.balanceOf(borrower), 80e18, "borrowed amount not received");
+    }
+
+    function test_BorrowBeyondLimitReverts() public {
+        vm.startPrank(borrower);
+        core.supplyCollateral(params, 100e18, borrower);
+        vm.expectRevert(LendingCore.Unhealthy.selector);
+        core.borrow(params, 80e18 + 1, borrower, borrower);
+        vm.stopPrank();
+    }
+
+    function test_WithdrawCollateralThatWouldUnderCollateralizeReverts() public {
+        vm.startPrank(borrower);
+        core.supplyCollateral(params, 100e18, borrower);
+        core.borrow(params, 80e18, borrower, borrower);
+        // Removing any collateral now drops borrowing power below the debt.
+        vm.expectRevert(LendingCore.Unhealthy.selector);
+        core.withdrawCollateral(params, 1e18, borrower, borrower);
+        vm.stopPrank();
+    }
+
+    function test_RepayThenWithdrawCollateral() public {
+        vm.startPrank(borrower);
+        core.supplyCollateral(params, 100e18, borrower);
+        core.borrow(params, 80e18, borrower, borrower);
+        core.repay(params, 80e18, borrower);
+        // Debt cleared, collateral can now leave.
+        core.withdrawCollateral(params, 100e18, borrower, borrower);
+        vm.stopPrank();
+        assertEq(collateral.balanceOf(borrower), 1_000e18, "collateral not fully returned");
+    }
+}
