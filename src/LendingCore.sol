@@ -147,10 +147,27 @@ contract LendingCore {
         if (onBehalf == address(0)) revert ZeroAddress();
         _accrue(params, id);
         Market storage m = market[id];
-        shares = assets.toSharesDown(m.totalBorrowAssets, m.totalBorrowShares);
-        position[id][onBehalf].borrowShares -= shares;
+        Position storage pos = position[id][onBehalf];
+
+        // The full value of this position, rounded up — the true amount owed.
+        uint256 fullDebt = uint256(pos.borrowShares).toAssetsUp(
+            m.totalBorrowAssets, m.totalBorrowShares
+        );
+
+        if (assets >= fullDebt) {
+            // Close the position entirely. Burning all shares avoids the
+            // rounding dust that accumulates when assets.toSharesDown() floors
+            // the share count, leaving non-zero shares against zero assets.
+            assets = fullDebt;
+            shares = pos.borrowShares;
+        } else {
+            shares = assets.toSharesDown(m.totalBorrowAssets, m.totalBorrowShares);
+        }
+
+        pos.borrowShares -= shares;
         m.totalBorrowShares -= shares;
         m.totalBorrowAssets -= assets;
+
         SafeTransferLib.safeTransferFrom(params.loanToken, msg.sender, address(this), assets);
         emit Repay(id, onBehalf, assets, shares);
     }
