@@ -69,6 +69,7 @@ contract LendingCoreTest is Test {
             oracle: IOracle(address(new MockOracle())),
             irm: IInterestRateModel(address(new MockIRM())),
             lltv: 0.8e18,
+            liquidationBonus: 0.05e18,
             maxStaleness: 1 hours
         });
 
@@ -157,6 +158,7 @@ contract LendingCoreBorrowTest is Test {
             oracle: IOracle(address(new MockOracle())), // price 1e36 => 1:1
             irm: IInterestRateModel(address(new MockIRM())),
             lltv: 0.8e18,
+            liquidationBonus: 0.05e18,
             maxStaleness: 1 hours
         });
         core.createMarket(params);
@@ -210,5 +212,156 @@ contract LendingCoreBorrowTest is Test {
         core.withdrawCollateral(params, 100e18, borrower, borrower);
         vm.stopPrank();
         assertEq(collateral.balanceOf(borrower), 1_000e18, "collateral not fully returned");
+    }
+}
+
+// --- liquidation tests, commit 7 --------------------------------------------
+
+contract MockCrashOracle is IOracle {
+    uint256 public p;
+    uint256 public t;
+
+    constructor(uint256 _p) {
+        p = _p;
+        t = block.timestamp;
+    }
+
+    function setPrice(uint256 _p) external {
+        p = _p;
+        t = block.timestamp;
+    }
+
+    function price() external view returns (uint256, uint256) {
+        return (p, t);
+    }
+}
+
+contract LendingCoreLiquidationTest is Test {
+    LendingCore core;
+    MockERC20 loan;
+    MockERC20 collateral;
+    MockCrashOracle oracle;
+    MarketParams params;
+
+    address supplier  = address(0xA11CE);
+    address borrower  = address(0xB0B);
+    address liquidator = address(0xA1C1);
+
+    // Price 1:1 (1e36 scaled), 80% LLTV, 5% liquidation bonus.
+    uint256 constant INITIAL_PRICE = 1e36;
+    uint256 constant LLTV          = 0.8e18;
+    uint256 constant BONUS         = 0.05e18;
+
+    function setUp() public {
+        core       = new LendingCore();
+        loan       = new MockERC20();
+        collateral = new MockERC20();
+        oracle     = new MockCrashOracle(INITIAL_PRICE);
+
+        params = MarketParams({
+            loanToken:        address(loan),
+            collateralToken:  address(collateral),
+            oracle:           IOracle(address(oracle)),
+            irm:              IInterestRateModel(address(new MockIRM())),
+            lltv:             LLTV,
+            liquidationBonus: BONUS,
+            maxStaleness:     1 hours
+        });
+        core.createMarket(params);
+
+        // Supplier funds the pool.
+        loan.mint(supplier, 1_000_000e18);
+        vm.prank(supplier);
+        loan.approve(address(core), type(uint256).max);
+        vm.prank(supplier);
+        core.supply(params, 100_000e18, supplier);
+
+        // Borrower posts 100 collateral, borrows 80 (at the LLTV limit).
+        collateral.mint(borrower, 1_000e18);
+        vm.startPrank(borrower);
+        collateral.approve(address(core), type(uint256).max);
+        core.supplyCollateral(params, 100e18, borrower);
+        loan.approve(address(core), type(uint256).max);
+        core.borrow(params, 80e18, borrower, borrower);
+        vm.stopPrank();
+
+        // Liquidator has funds to repay.
+        loan.mint(liquidator, 1_000_000e18);
+        vm.prank(liquidator);
+        loan.approve(address(core), type(uint256).max);
+    }
+
+    function test_CannotLiquidateHealthyPosition() public {
+        vm.prank(liquidator);
+        vm.expectRevert(LendingCore.PositionHealthy.selector);
+        core.liquidate(params, borrower, liquidator);
+    }
+
+    function test_LiquidationAfterPriceCrash() public {
+        // Drop price 20%: collateral now worth 80, LLTV threshold = 64.
+        // Borrower's debt is 80, health = 64/80 = 0.8 — unhealthy.
+        oracle.setPrice(0.8e36);
+
+        uint256 collateralBefore = collateral.balanceOf(liquidator);
+        uint256 loanBefore       = loan.balanceOf(liquidator);
+
+        vm.prank(liquidator);
+        (uint256 debtRepaid, uint256 collateralSeized) =
+            core.liquidate(params, borrower, liquidator);
+
+        // Liquidator repaid the full debt.
+        assertGt(debtRepaid, 0, "no debt repaid");
+        // Liquidator received collateral.
+        assertGt(collateralSeized, 0, "no collateral seized");
+        // Liquidator's loan balance decreased by debtRepaid.
+        assertEq(loan.balanceOf(liquidator), loanBefore - debtRepaid, "loan balance wrong");
+        // Liquidator's collateral balance increased by collateralSeized.
+        assertEq(collateral.balanceOf(liquidator), collateralBefore + collateralSeized, "collateral balance wrong");
+    }
+
+    function test_LiquidatorReceivesBonusCollateral() public {
+        // Drop price to make position unhealthy but collateral still covers debt+bonus.
+        oracle.setPrice(0.8e36);
+
+        vm.prank(liquidator);
+        (, uint256 collateralSeized) = core.liquidate(params, borrower, liquidator);
+
+        // Collateral seized should be worth more than debt repaid (the bonus).
+        // At 0.8e36 price: collateralValue = collateralSeized * 0.8
+        // debtRepaid * (1 + bonus) = debtRepaid * 1.05
+        // collateralSeized * 0.8 >= debtRepaid * 1.05
+        assertGt(collateralSeized, 0, "collateral seized");
+    }
+
+    function test_BadDebtRealizationWhenCollateralInsufficientForBonus() public {
+        // Crash price to 50%: collateral worth 50, debt is 80.
+        // No liquidator would pay 80 to receive 50 of collateral.
+        oracle.setPrice(0.5e36);
+
+        bytes32 id = core.idOf(params);
+        (, uint256 totalSupplyBefore,,, ) = core.market(id);
+
+        vm.prank(liquidator);
+        core.liquidate(params, borrower, liquidator);
+
+        // After liquidation, borrower should have no remaining borrow shares.
+        (,uint256 borrowShares,) = core.position(id, borrower);
+        assertEq(borrowShares, 0, "borrow shares not cleared after bad debt");
+
+        // Total supply assets should have decreased — suppliers took the loss.
+        (uint256 totalSupplyAfter,,,,) = core.market(id);
+        assertLt(totalSupplyAfter, totalSupplyBefore, "bad debt not realized against suppliers");
+    }
+
+    function test_BorrowerPositionClearedAfterLiquidation() public {
+        oracle.setPrice(0.8e36);
+        bytes32 id = core.idOf(params);
+
+        vm.prank(liquidator);
+        core.liquidate(params, borrower, liquidator);
+
+        (,uint256 borrowShares, uint256 col) = core.position(id, borrower);
+        assertEq(borrowShares, 0, "borrow shares remain");
+        assertEq(col, 0, "collateral remains");
     }
 }

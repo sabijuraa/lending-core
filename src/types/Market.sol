@@ -10,8 +10,9 @@ struct MarketParams {
     address collateralToken;
     IOracle oracle;
     IInterestRateModel irm;
-    uint256 lltv; // liquidation loan-to-value, scaled by 1e18
-    uint256 maxStaleness; // max oracle price age in seconds
+    uint256 lltv;             // liquidation loan-to-value, scaled by 1e18
+    uint256 liquidationBonus; // bonus paid to liquidators, scaled by 1e18 (e.g. 0.05e18 = 5%)
+    uint256 maxStaleness;     // max oracle price age in seconds
 }
 
 /// @notice The mutable state of a market.
@@ -20,7 +21,7 @@ struct Market {
     uint256 totalSupplyShares;
     uint256 totalBorrowAssets;
     uint256 totalBorrowShares;
-    uint256 lastAccrued; // timestamp of the last interest accrual
+    uint256 lastAccrued;
 }
 
 /// @notice A single account's position in a market.
