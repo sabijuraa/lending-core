@@ -27,6 +27,12 @@ contract LendingCore {
     error Unhealthy();
     error PositionHealthy();
     error InvalidLiquidationBonus();
+    error Unauthorized();
+
+    /// @notice Approved operators that can act on behalf of a user.
+    mapping(address owner => mapping(address operator => bool)) public isAuthorized;
+
+    event SetAuthorization(address indexed owner, address indexed operator, bool authorized);
 
     event CreateMarket(bytes32 indexed id, MarketParams params);
     event Supply(bytes32 indexed id, address indexed onBehalf, uint256 assets, uint256 shares);
@@ -40,6 +46,20 @@ contract LendingCore {
 
     function idOf(MarketParams memory params) public pure returns (bytes32) {
         return keccak256(abi.encode(params));
+    }
+
+    /// @notice Authorize or revoke an operator to act on behalf of msg.sender.
+    /// @param operator The address to authorize or revoke.
+    /// @param authorized True to authorize, false to revoke.
+    function setAuthorization(address operator, bool authorized) external {
+        isAuthorized[msg.sender][operator] = authorized;
+        emit SetAuthorization(msg.sender, operator, authorized);
+    }
+
+    function _isSenderOrAuthorized(address onBehalf) internal view {
+        if (msg.sender != onBehalf && !isAuthorized[onBehalf][msg.sender]) {
+            revert Unauthorized();
+        }
     }
 
     function createMarket(MarketParams memory params) external {
@@ -81,6 +101,7 @@ contract LendingCore {
         bytes32 id = _live(params);
         if (assets == 0) revert ZeroAssets();
         if (receiver == address(0)) revert ZeroAddress();
+        _isSenderOrAuthorized(onBehalf);
         _accrue(params, id);
         Market storage m = market[id];
         shares = assets.toSharesUp(m.totalSupplyAssets, m.totalSupplyShares);
@@ -112,6 +133,7 @@ contract LendingCore {
         bytes32 id = _live(params);
         if (assets == 0) revert ZeroAssets();
         if (receiver == address(0)) revert ZeroAddress();
+        _isSenderOrAuthorized(onBehalf);
         _accrue(params, id);
         position[id][onBehalf].collateral -= assets;
         _requireHealthy(params, id, onBehalf);
@@ -127,6 +149,7 @@ contract LendingCore {
         bytes32 id = _live(params);
         if (assets == 0) revert ZeroAssets();
         if (receiver == address(0)) revert ZeroAddress();
+        _isSenderOrAuthorized(onBehalf);
         _accrue(params, id);
         Market storage m = market[id];
         shares = assets.toSharesUp(m.totalBorrowAssets, m.totalBorrowShares);
@@ -145,6 +168,10 @@ contract LendingCore {
         bytes32 id = _live(params);
         if (assets == 0) revert ZeroAssets();
         if (onBehalf == address(0)) revert ZeroAddress();
+        // Note: repay does NOT require authorization. Anyone can repay debt on behalf
+        // of another user. This is a feature, not a bug — it enables third-party
+        // liquidation bots and good samaritan repayments. The repayer pays, the
+        // borrower benefits. There is no attack vector here.
         _accrue(params, id);
         Market storage m = market[id];
         Position storage pos = position[id][onBehalf];
