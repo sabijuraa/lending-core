@@ -119,6 +119,31 @@ contract LendingCoreTest is Test {
         core.supply(ghost, 1000e18, supplier);
     }
 
+    function test_WithdrawRevertsIfUnauthorized() public {
+        vm.prank(supplier);
+        core.supply(params, 1000e18, supplier);
+
+        // Other tries to withdraw supplier's funds without authorization
+        vm.prank(other);
+        vm.expectRevert(LendingCore.Unauthorized.selector);
+        core.withdraw(params, 500e18, supplier, other);
+    }
+
+    function test_WithdrawSucceedsIfAuthorized() public {
+        vm.prank(supplier);
+        core.supply(params, 1000e18, supplier);
+
+        // Supplier authorizes other
+        vm.prank(supplier);
+        core.setAuthorization(other, true);
+
+        // Other can now withdraw on behalf of supplier
+        vm.prank(other);
+        core.withdraw(params, 500e18, supplier, other);
+
+        assertEq(loan.balanceOf(other), 500e18, "authorized withdrawal failed");
+    }
+
     /// forge-config: default.fuzz.runs = 5000
     function testFuzz_SupplyThenWithdrawNeverReturnsMore(uint256 amount) public {
         amount = bound(amount, 1, 1_000_000e18);
@@ -212,6 +237,43 @@ contract LendingCoreBorrowTest is Test {
         core.withdrawCollateral(params, 100e18, borrower, borrower);
         vm.stopPrank();
         assertEq(collateral.balanceOf(borrower), 1_000e18, "collateral not fully returned");
+    }
+
+    function test_BorrowRevertsIfUnauthorized() public {
+        vm.prank(borrower);
+        core.supplyCollateral(params, 100e18, borrower);
+
+        // Attacker tries to borrow against borrower's collateral
+        vm.prank(supplier);
+        vm.expectRevert(LendingCore.Unauthorized.selector);
+        core.borrow(params, 80e18, borrower, supplier);
+    }
+
+    function test_WithdrawCollateralRevertsIfUnauthorized() public {
+        vm.prank(borrower);
+        core.supplyCollateral(params, 100e18, borrower);
+
+        // Attacker tries to steal borrower's collateral
+        vm.prank(supplier);
+        vm.expectRevert(LendingCore.Unauthorized.selector);
+        core.withdrawCollateral(params, 100e18, borrower, supplier);
+    }
+
+    function test_RepaySucceedsFromAnyAddress() public {
+        vm.startPrank(borrower);
+        core.supplyCollateral(params, 100e18, borrower);
+        core.borrow(params, 80e18, borrower, borrower);
+        vm.stopPrank();
+
+        // Anyone can repay on behalf of someone else (good samaritan / liquidator helper)
+        loan.mint(supplier, 80e18);
+        vm.startPrank(supplier);
+        loan.approve(address(core), 80e18);
+        core.repay(params, 80e18, borrower);
+        vm.stopPrank();
+
+        (, uint256 borrowShares,) = core.position(core.idOf(params), borrower);
+        assertEq(borrowShares, 0, "debt not cleared by third-party repay");
     }
 }
 
