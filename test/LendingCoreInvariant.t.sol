@@ -71,6 +71,10 @@ contract Handler is Test {
     address[] public actors;
     uint256 constant MAX_AMOUNT = 1_000_000e18;
 
+    function getActors() external view returns (address[] memory) {
+        return actors;
+    }
+
     constructor(
         LendingCore _core,
         MockERC20Inv _loan,
@@ -252,5 +256,22 @@ contract LendingCoreInvariantTest is StdInvariant, Test {
         if (totalBorrowShares == 0) {
             assertEq(totalBorrowAssets, 0, "borrow assets non-zero when borrow shares is zero");
         }
+    }
+
+    /// @dev The collateral token balance held by the core equals the sum of all
+    ///      users' collateral. Since the handler only uses a fixed set of actors,
+    ///      we can sum their collateral to verify.
+    function invariant_collateralAccountingMatches() public view {
+        uint256 totalCollateralHeld = 0;
+        address[] memory actors = handler.getActors();
+        for (uint256 i = 0; i < actors.length; i++) {
+            (,, uint256 col) = core.position(id, actors[i]);
+            totalCollateralHeld += col;
+        }
+        assertEq(
+            collateral.balanceOf(address(core)),
+            totalCollateralHeld,
+            "collateral balance does not match accounting"
+        );
     }
 }
