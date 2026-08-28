@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 import {IOracle} from "../interfaces/IOracle.sol";
+import {FixedPointMathLib} from "solady/utils/FixedPointMathLib.sol";
 
 /// @notice Chainlink's aggregator interface (subset we need).
 interface IAggregatorV3 {
@@ -51,7 +52,10 @@ contract ChainlinkOracleAdapter is IOracle {
 
         // Price = (collateralPrice / collateralScale) / (loanPrice / loanScale)
         // Scaled by 1e36: price = collateralPrice * loanScale * 1e36 / (loanPrice * collateralScale)
-        uint256 scaledPrice = (collateralPrice * loanScale * 1e36) / (loanPrice * collateralScale);
+        // Using fullMulDiv for overflow-safe 512-bit intermediate.
+        uint256 scaledPrice = FixedPointMathLib.fullMulDiv(
+            collateralPrice * loanScale, 1e36, loanPrice * collateralScale
+        );
 
         // Return the older of the two timestamps so staleness check uses worst case.
         uint256 updatedAt = collateralUpdatedAt < loanUpdatedAt ? collateralUpdatedAt : loanUpdatedAt;
