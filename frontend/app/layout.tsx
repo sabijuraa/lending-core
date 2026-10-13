@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <Providers>
           <Navbar />
-          <main style={{ paddingTop: 64 }}>{children}</main>
+          <main style={{ paddingTop: 68 }}>{children}</main>
           <Footer />
         </Providers>
       </body>

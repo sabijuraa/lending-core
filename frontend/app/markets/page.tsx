@@ -1,22 +1,38 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
-import { CaretDown, Plus } from '@phosphor-icons/react'
-import { KinkedRateCurve } from '@/components/charts/KinkedRateCurve'
+import { CaretDown, CaretUp, Plus, MagnifyingGlass, ArrowRight } from '@phosphor-icons/react'
 import { UtilizationBar } from '@/components/charts/UtilizationBar'
 import { OracleDot } from '@/components/ui/OracleDot'
-import { useUIStore } from '@/lib/store'
-import { DEMO_MARKETS, PROTOCOL_STATS } from '@/lib/contracts'
+import { useData } from '@/providers/provider'
+import type { MarketView } from '@/providers/types'
 import { formatUSD, formatPercent } from '@/lib/formatting'
 
 type Filter = 'all' | 'stablecoin' | 'volatile' | 'high-lltv'
-type Sort = 'tvl' | 'supply-apy' | 'borrow-apy' | 'utilization'
+type SortKey = 'tvl' | 'supply-apy' | 'borrow-apy' | 'utilization'
+type SortDir = 'asc' | 'desc'
 
 export default function MarketsPage() {
+  const data = useData()
+  const [markets, setMarkets] = useState<MarketView[]>([])
   const [filter, setFilter] = useState<Filter>('all')
-  const [sort, setSort] = useState<Sort>('tvl')
-  const { expandedMarketId, toggleMarketExpand, openSlideOver } = useUIStore()
+  const [sortKey, setSortKey] = useState<SortKey>('tvl')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    data.getMarkets().then(setMarkets)
+  }, [data])
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc')
+    } else {
+      setSortKey(key)
+      setSortDir('desc')
+    }
+  }
 
   const filters: { value: Filter; label: string }[] = [
     { value: 'all', label: 'All markets' },
@@ -26,145 +42,233 @@ export default function MarketsPage() {
   ]
 
   const filtered = useMemo(() => {
-    let r = DEMO_MARKETS
-    if (filter === 'stablecoin') r = r.filter(m => ['USDC', 'DAI'].includes(m.loanSymbol))
-    if (filter === 'volatile') r = r.filter(m => !['USDC', 'DAI'].includes(m.collateralSymbol))
+    let r = markets
+    if (search) {
+      const q = search.toLowerCase()
+      r = r.filter(m =>
+        m.collateralSymbol.toLowerCase().includes(q) ||
+        m.loanSymbol.toLowerCase().includes(q) ||
+        m.slug.toLowerCase().includes(q)
+      )
+    }
+    if (filter === 'stablecoin') r = r.filter(m => ['USDC', 'DAI', 'USDT'].includes(m.loanSymbol))
+    if (filter === 'volatile') r = r.filter(m => !['USDC', 'DAI', 'USDT'].includes(m.collateralSymbol))
     if (filter === 'high-lltv') r = r.filter(m => m.lltv >= 0.8)
+    const mul = sortDir === 'desc' ? -1 : 1
     return [...r].sort((a, b) => {
-      if (sort === 'tvl') return b.totalSupplied - a.totalSupplied
-      if (sort === 'supply-apy') return b.supplyAPY - a.supplyAPY
-      if (sort === 'borrow-apy') return b.borrowAPY - a.borrowAPY
-      return b.utilization - a.utilization
+      if (sortKey === 'tvl') return mul * (a.totalSupplied - b.totalSupplied)
+      if (sortKey === 'supply-apy') return mul * (a.supplyAPY - b.supplyAPY)
+      if (sortKey === 'borrow-apy') return mul * (a.borrowAPY - b.borrowAPY)
+      return mul * (a.utilization - b.utilization)
     })
-  }, [filter, sort])
+  }, [markets, filter, sortKey, sortDir, search])
+
+  const SortIcon = ({ col }: { col: SortKey }) => {
+    if (sortKey !== col) return null
+    return sortDir === 'desc'
+      ? <CaretDown size={10} weight="bold" style={{ marginLeft: 3 }} />
+      : <CaretUp size={10} weight="bold" style={{ marginLeft: 3 }} />
+  }
 
   return (
     <div style={{ minHeight: '100vh', padding: '48px 0 96px' }}>
       <div className="section-container">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
-          <div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>Markets</h1>
-            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>
-              Every market is completely isolated. Your risk stops at its boundary.
-            </p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>Total locked</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 20, fontWeight: 500, color: 'var(--color-accent)' }}>
-                {formatUSD(PROTOCOL_STATS.totalSupplied, true)}
-              </div>
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{ marginBottom: 32 }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h1 className="page-heading">Markets</h1>
+              <p className="page-subtitle">Every market is completely isolated. Your risk stops at its boundary.</p>
             </div>
-            <div style={{ width: '0.5px', height: 40, background: 'var(--color-border)' }} />
-            <Link href="/markets/create" className="btn btn-primary" style={{ gap: 6 }}>
+            <Link href="/markets/create" className="btn btn-primary" style={{ gap: 6, flexShrink: 0 }}>
               <Plus size={14} weight="bold" /> Create market
             </Link>
           </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        {/* Filter bar */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.08 }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 16,
+            gap: 12,
+          }}
+        >
           <div style={{ display: 'flex', gap: 6 }}>
             {filters.map(f => (
-              <button key={f.value} onClick={() => setFilter(f.value)} className={`pill ${filter === f.value ? 'pill-selected' : ''}`} style={{ cursor: 'pointer', border: 'none', fontSize: 13, padding: '6px 14px' }}>
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={`pill ${filter === f.value ? 'pill-selected' : ''}`}
+                style={{ cursor: 'pointer', fontSize: 12, padding: '5px 14px' }}
+              >
                 {f.label}
               </button>
             ))}
           </div>
-          <select value={sort} onChange={e => setSort(e.target.value as Sort)} style={{ background: 'var(--color-bg-surface)', border: '0.5px solid var(--color-border)', borderRadius: 'var(--radius-sm)', color: 'var(--color-text-secondary)', fontSize: 13, padding: '6px 10px', cursor: 'pointer', outline: 'none' }}>
-            <option value="tvl">TVL ↓</option>
-            <option value="supply-apy">Supply APY ↓</option>
-            <option value="borrow-apy">Borrow APY ↓</option>
-            <option value="utilization">Utilization ↓</option>
-          </select>
+          <div style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+          }}>
+            <MagnifyingGlass size={14} style={{
+              position: 'absolute',
+              left: 10,
+              color: 'var(--text-4)',
+              pointerEvents: 'none',
+            }} />
+            <input
+              type="text"
+              placeholder="Search markets..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="input"
+              style={{
+                paddingLeft: 30,
+                width: 200,
+                fontSize: 13,
+                padding: '7px 12px 7px 30px',
+              }}
+            />
+          </div>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="card" style={{ overflow: 'hidden' }}>
+        {/* Table */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--r-lg)',
+            overflow: 'hidden',
+          }}
+        >
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ padding: '14px 20px', width: 240 }}>MARKET</th>
-                <th style={{ padding: '14px 16px', width: 110 }}>SUPPLY APY</th>
-                <th style={{ padding: '14px 16px', width: 110 }}>BORROW APY</th>
-                <th style={{ padding: '14px 16px', width: 200 }}>UTILIZATION</th>
-                <th style={{ padding: '14px 16px', width: 140 }}>TVL</th>
-                <th style={{ padding: '14px 16px', width: 80 }}>LLTV</th>
-                <th style={{ padding: '14px 16px', width: 80 }}>ORACLE</th>
-                <th style={{ width: 40 }}></th>
+                <th style={{ paddingLeft: 24, paddingTop: 16, width: 220 }}>Market</th>
+                <th
+                  style={{ paddingTop: 16, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => toggleSort('supply-apy')}
+                >
+                  Supply APY <SortIcon col="supply-apy" />
+                </th>
+                <th
+                  style={{ paddingTop: 16, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => toggleSort('borrow-apy')}
+                >
+                  Borrow APY <SortIcon col="borrow-apy" />
+                </th>
+                <th
+                  style={{ paddingTop: 16, width: 160, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => toggleSort('utilization')}
+                >
+                  Utilization <SortIcon col="utilization" />
+                </th>
+                <th
+                  style={{ paddingTop: 16, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => toggleSort('tvl')}
+                >
+                  Total Supplied <SortIcon col="tvl" />
+                </th>
+                <th style={{ paddingTop: 16 }}>LLTV</th>
+                <th style={{ paddingTop: 16 }}>Oracle</th>
+                <th style={{ paddingTop: 16, paddingRight: 24, width: 40 }}></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((market, i) => (
-                <>
-                  <motion.tr key={market.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }} onClick={() => toggleMarketExpand(market.id)} style={{ cursor: 'pointer' }}>
-                    <td style={{ padding: '18px 20px' }}>
+              {filtered.map((m, i) => (
+                <motion.tr
+                  key={m.slug}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.03 }}
+                >
+                  <td style={{ paddingLeft: 24 }}>
+                    <Link href={`/markets/${m.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-bg-surface-2)', border: '0.5px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 500, color: 'var(--color-accent)', fontFamily: 'var(--font-mono)' }}>
-                          {market.collateralSymbol.slice(0, 2)}
+                        <div style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: '50%',
+                          background: 'var(--accent-dim)',
+                          border: '1px solid var(--accent-border)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: 'var(--accent)',
+                        }}>
+                          {m.collateralSymbol.slice(0, 2)}
                         </div>
                         <div>
-                          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--color-text-primary)' }}>{market.collateralSymbol} / {market.loanSymbol}</div>
-                          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>{market.chain}</div>
+                          <div style={{ fontWeight: 500, color: 'var(--text-1)', fontSize: 14 }}>
+                            {m.collateralSymbol}/{m.loanSymbol}
+                          </div>
                         </div>
                       </div>
-                    </td>
-                    <td><span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--color-positive)' }}>{formatPercent(market.supplyAPY)}</span></td>
-                    <td><span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--color-warning)' }}>{formatPercent(market.borrowAPY)}</span></td>
-                    <td style={{ width: 180 }}><UtilizationBar utilization={market.utilization} animated /></td>
-                    <td><span style={{ fontFamily: 'var(--font-mono)', fontSize: 14 }}>{formatUSD(market.totalSupplied, true)}</span></td>
-                    <td><span style={{ fontFamily: 'var(--font-mono)', fontSize: 14 }}>{formatPercent(market.lltv * 100, 0)}</span></td>
-                    <td><OracleDot lastUpdate={market.oracleLastUpdate} maxStaleness={market.maxStaleness} showLabel /></td>
-                    <td>
-                      <motion.div animate={{ rotate: expandedMarketId === market.id ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                        <CaretDown size={14} style={{ color: 'var(--color-text-muted)' }} />
-                      </motion.div>
-                    </td>
-                  </motion.tr>
-                  <AnimatePresence>
-                    {expandedMarketId === market.id && (
-                      <tr key={`${market.id}-exp`}>
-                        <td colSpan={8} style={{ padding: 0 }}>
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }} style={{ overflow: 'hidden' }}>
-                            <div style={{ background: 'var(--color-bg-surface-2)', padding: '24px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28, borderTop: '0.5px solid var(--color-border)' }}>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Rate curve</div>
-                                <div style={{ background: 'var(--color-bg-surface)', border: '0.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '14px 18px 8px' }}>
-                                  <KinkedRateCurve size="card" currentUtilization={market.utilization} interactive animated={false} />
-                                </div>
-                              </div>
-                              <div>
-                                <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 14 }}>Parameters</div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px', marginBottom: 20 }}>
-                                  {[
-                                    { l: 'Collateral', v: market.collateralSymbol },
-                                    { l: 'Loan', v: market.loanSymbol },
-                                    { l: 'LLTV', v: formatPercent(market.lltv * 100, 0) },
-                                    { l: 'Liq. bonus', v: formatPercent(market.liquidationBonus * 100, 0) },
-                                    { l: 'TVL', v: formatUSD(market.totalSupplied, true) },
-                                    { l: 'Borrowed', v: formatUSD(market.totalBorrowed, true) },
-                                  ].map(({ l, v }) => (
-                                    <div key={l}>
-                                      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 2 }}>{l}</div>
-                                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{v}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div style={{ display: 'flex', gap: 10 }}>
-                                  <button className="btn btn-primary" onClick={e => { e.stopPropagation(); openSlideOver('supply', market.id) }} style={{ flex: 1 }}>Supply</button>
-                                  <button className="btn btn-ghost" onClick={e => { e.stopPropagation(); openSlideOver('borrow', market.id) }} style={{ flex: 1 }}>Borrow</button>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        </td>
-                      </tr>
-                    )}
-                  </AnimatePresence>
-                </>
+                    </Link>
+                  </td>
+                  <td>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--positive)' }}>
+                      {formatPercent(m.supplyAPY)}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-1)' }}>
+                      {formatPercent(m.borrowAPY)}
+                    </span>
+                  </td>
+                  <td>
+                    <UtilizationBar utilization={m.utilization} height={5} showLabel animated={false} />
+                  </td>
+                  <td>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-2)' }}>
+                      {formatUSD(m.totalSupplied, true)}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-2)' }}>
+                      {formatPercent(m.lltv * 100, 0)}
+                    </span>
+                  </td>
+                  <td>
+                    <OracleDot lastUpdate={m.oracleLastUpdate} maxStaleness={m.maxStaleness} showLabel />
+                  </td>
+                  <td style={{ paddingRight: 24 }}>
+                    <Link href={`/markets/${m.slug}`} style={{ color: 'var(--text-4)', display: 'flex' }}>
+                      <ArrowRight size={14} />
+                    </Link>
+                  </td>
+                </motion.tr>
               ))}
             </tbody>
           </table>
-          <div style={{ padding: '12px 20px', borderTop: '0.5px solid var(--color-border)', textAlign: 'center', fontSize: 13, color: 'var(--color-text-muted)' }}>
-            Showing {filtered.length} of {DEMO_MARKETS.length} markets
+          {filtered.length === 0 && (
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-4)', fontSize: 14 }}>
+              No markets match your filters.
+            </div>
+          )}
+          <div style={{
+            padding: '12px 24px',
+            borderTop: '1px solid var(--border-subtle)',
+            textAlign: 'center',
+            fontSize: 12,
+            color: 'var(--text-4)',
+          }}>
+            Showing {filtered.length} of {markets.length} markets
           </div>
         </motion.div>
       </div>

@@ -1,16 +1,26 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CaretDown, Info, Warning, ShieldCheck } from '@phosphor-icons/react'
 import { UtilizationBar } from '@/components/charts/UtilizationBar'
 import { HealthGauge } from '@/components/charts/HealthGauge'
-import { DEMO_MARKETS } from '@/lib/contracts'
+import { useData } from '@/providers/provider'
+import type { MarketView } from '@/providers/types'
 import { formatUSD, formatPercent } from '@/lib/formatting'
 
 type Tab = 'borrow' | 'repay'
 
 export default function BorrowPage() {
-  const [selectedMarket, setSelectedMarket] = useState(DEMO_MARKETS[0])
+  const data = useData()
+  const [markets, setMarkets] = useState<MarketView[]>([])
+  const [selectedMarket, setSelectedMarket] = useState<MarketView | null>(null)
+
+  useEffect(() => {
+    data.getMarkets().then(mkts => {
+      setMarkets(mkts)
+      if (mkts.length > 0 && !selectedMarket) setSelectedMarket(mkts[0])
+    })
+  }, [data])
   const [tab, setTab] = useState<Tab>('borrow')
   const [collateralAmount, setCollateralAmount] = useState('')
   const [borrowAmount, setBorrowAmount] = useState('')
@@ -21,17 +31,21 @@ export default function BorrowPage() {
   const collateralPrice = 3500
 
   const healthFactor = useMemo(() => {
+    if (!selectedMarket) return 999
     const collateral = parseFloat(collateralAmount) || 0
     const borrow = parseFloat(borrowAmount) || 0
     if (borrow === 0) return 999
     const collateralValue = collateral * collateralPrice
     return (collateralValue * selectedMarket.lltv) / borrow
-  }, [collateralAmount, borrowAmount, selectedMarket.lltv, collateralPrice])
+  }, [collateralAmount, borrowAmount, selectedMarket?.lltv, collateralPrice])
 
   const maxBorrow = useMemo(() => {
+    if (!selectedMarket) return 0
     const collateral = parseFloat(collateralAmount) || 0
     return collateral * collateralPrice * selectedMarket.lltv * 0.95
-  }, [collateralAmount, selectedMarket.lltv, collateralPrice])
+  }, [collateralAmount, selectedMarket?.lltv, collateralPrice])
+
+  if (!selectedMarket) return null
 
   return (
     <div style={{ minHeight: '100vh', padding: '48px 0 96px' }}>
@@ -157,7 +171,7 @@ export default function BorrowPage() {
                           boxShadow: '0 12px 40px rgba(17,24,39,0.08)',
                         }}
                       >
-                        {DEMO_MARKETS.map(market => (
+                        {markets.map(market => (
                           <button
                             key={market.id}
                             onClick={() => { setSelectedMarket(market); setMarketDropdownOpen(false); }}

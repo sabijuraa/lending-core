@@ -42,56 +42,63 @@ const cols = [
     title: 'Protocol',
     links: [
       { label: 'Markets', href: '/markets' },
-      { label: 'Earn', href: '/earn' },
-      { label: 'Borrow', href: '/borrow' },
+      { label: 'Portfolio', href: '/portfolio' },
       { label: 'Liquidations', href: '/liquidations' },
-      { label: 'Dashboard', href: '/dashboard' },
+      { label: 'Analytics', href: '/analytics' },
     ]
   },
   {
     title: 'Learn',
     links: [
       { label: 'How it works', href: '/how-it-works' },
+      { label: 'Documentation', href: '/docs' },
       { label: 'Security', href: '/security' },
-      { label: 'Docs', href: '/docs' },
       { label: 'About', href: '/about' },
     ]
   },
   {
-    title: 'Legal',
+    title: 'Developers',
+    links: [
+      { label: 'GitHub', href: 'https://github.com/sabijuraa/lending-core', ext: true },
+      { label: 'Smart Contracts', href: '/docs' },
+      { label: 'MIT License', href: 'https://opensource.org/licenses/MIT', ext: true },
+    ]
+  },
+  {
+    title: 'Trust & Policies',
     links: [
       { label: 'Terms of use', href: '/terms' },
       { label: 'Privacy policy', href: '/privacy' },
-      { label: 'MIT License', href: 'https://opensource.org/licenses/MIT', ext: true },
+      { label: 'Risk disclosure', href: '/security' },
     ]
   },
 ]
 
 export function Footer() {
   return (
-    <footer style={{ background: 'var(--bg-0)', borderTop: '0.5px solid var(--border-default)' }}>
-      <div className="section-container" style={{ padding: '64px 80px 32px' }}>
+    <footer style={{ background: 'var(--surface)', borderTop: '1px solid var(--border-subtle)' }}>
+      <div className="section-container" style={{ padding: '56px 80px 28px' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '2fr 1fr 1fr 1fr',
-          gap: 64,
+          gridTemplateColumns: '1.8fr 1fr 1fr 1fr',
+          gap: 56,
           marginBottom: 48
         }}>
           {/* Brand column */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                 <polygon
                   points="12,1 22,6.5 22,17.5 12,23 2,17.5 2,6.5"
                   stroke="var(--accent)"
-                  strokeWidth="1"
+                  strokeWidth="1.2"
                   fill="none"
                 />
                 <polygon
                   points="12,5 18,8.5 18,15.5 12,19 6,15.5 6,8.5"
                   stroke="var(--accent)"
-                  strokeWidth="0.5"
-                  fill="rgba(37,99,235,0.08)"
+                  strokeWidth="0.6"
+                  fill="rgba(23,77,64,0.06)"
                   transform="rotate(15 12 12)"
                 />
               </svg>
@@ -106,38 +113,43 @@ export function Footer() {
             </div>
             <p style={{
               fontSize: 14,
-              color: 'var(--text-2)',
+              color: 'var(--text-3)',
               lineHeight: 1.7,
               marginBottom: 20,
-              maxWidth: 280
+              maxWidth: 260
             }}>
-              Lending, the way it should have always worked.
+              Isolated-market lending on Base. Each market stands alone, transparent rates, no shared risk.
             </p>
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 10 }}>
               <a
                 href="https://github.com/sabijuraa/lending-core"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
                   color: 'var(--text-3)',
-                  transition: 'color 150ms ease',
+                  transition: 'color 150ms ease, border-color 150ms ease',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   width: 32,
                   height: 32,
-                  borderRadius: 6,
-                  background: 'var(--bg-2)',
-                  border: '0.5px solid var(--border-default)',
+                  borderRadius: 'var(--r-sm)',
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border-default)',
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
-                onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-3)')}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--accent)'
+                  e.currentTarget.style.borderColor = 'var(--accent-border)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--text-3)'
+                  e.currentTarget.style.borderColor = 'var(--border-default)'
+                }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
                 </svg>
               </a>
-              
             </div>
           </div>
 
@@ -150,11 +162,11 @@ export function Footer() {
                 textTransform: 'uppercase',
                 letterSpacing: '0.08em',
                 color: 'var(--text-3)',
-                marginBottom: 20
+                marginBottom: 18
               }}>
                 {col.title}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
                 {col.links.map((link) => (
                   <Link
                     key={link.href + link.label}
@@ -170,7 +182,7 @@ export function Footer() {
                       gap: 4,
                       transition: 'color 150ms ease'
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-1)')}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--accent)')}
                     onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-2)')}
                   >
                     {link.label}
@@ -184,39 +196,38 @@ export function Footer() {
 
         {/* Bottom bar */}
         <div style={{
-          borderTop: '0.5px solid var(--border-default)',
-          paddingTop: 24,
+          borderTop: '1px solid var(--border-subtle)',
+          paddingTop: 20,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: 16
         }}>
-          <span style={{ fontSize: 13, color: 'var(--text-3)' }}>
-            Built for Base Sepolia. Built by Fizan Ali
+          <span style={{ fontSize: 13, color: 'var(--text-4)' }}>
+            Built on Base Sepolia. Engineered by Fizan Ali
           </span>
           <div>
             <CopyRow label="LendingCore" address={CONTRACT_ADDRESSES.LendingCore} />
             <CopyRow label="KinkedRateModel" address={CONTRACT_ADDRESSES.KinkedRateModel} />
           </div>
-          <span style={{ fontSize: 13, color: 'var(--text-3)' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-4)' }}>
             MIT License
           </span>
         </div>
       </div>
 
-      {/* Responsive styles */}
       <style jsx>{`
         @media (max-width: 1024px) {
           footer > div > div:first-child {
             grid-template-columns: 1fr 1fr !important;
-            gap: 48px !important;
+            gap: 40px !important;
           }
         }
         @media (max-width: 640px) {
           footer > div > div:first-child {
             grid-template-columns: 1fr !important;
-            gap: 40px !important;
+            gap: 32px !important;
           }
         }
       `}</style>
