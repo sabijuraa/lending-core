@@ -10,9 +10,9 @@ import { truncateAddress } from '@/lib/formatting'
 
 const NAV_LINKS = [
   { href: '/markets', label: 'Markets' },
-  { href: '/earn', label: 'Earn' },
-  { href: '/borrow', label: 'Borrow' },
-  { href: '/security', label: 'Security' },
+  { href: '/dashboard', label: 'Dashboard' },
+  { href: '/liquidations', label: 'Liquidations' },
+  { href: '/how-it-works', label: 'How it works' },
   { href: '/docs', label: 'Docs' },
 ]
 
@@ -53,7 +53,7 @@ export function Navbar() {
           alignItems: 'center',
           padding: '0 48px',
           transition: 'background 300ms ease, border-color 300ms ease, backdrop-filter 300ms ease',
-          background: scrolled ? 'rgba(5,6,8,0.85)' : 'transparent',
+          background: scrolled ? 'rgba(250,251,252,0.85)' : 'transparent',
           borderBottom: scrolled ? '0.5px solid var(--border-default)' : '0.5px solid transparent',
           backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
           WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
@@ -74,7 +74,7 @@ export function Navbar() {
               points="12,5 18,8.5 18,15.5 12,19 6,15.5 6,8.5"
               stroke="var(--accent)"
               strokeWidth="0.5"
-              fill="rgba(0,229,204,0.08)"
+              fill="rgba(37,99,235,0.08)"
               transform="rotate(15 12 12)"
             />
           </svg>
@@ -168,7 +168,7 @@ export function Navbar() {
               position: 'fixed',
               inset: 0,
               zIndex: 99,
-              background: 'rgba(5,6,8,0.98)',
+              background: 'rgba(250,251,252,0.98)',
               backdropFilter: 'blur(24px)',
               display: 'flex',
               flexDirection: 'column',
@@ -186,7 +186,7 @@ export function Navbar() {
               width: 400,
               height: 400,
               borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(0,229,204,0.06) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(37,99,235,0.06) 0%, transparent 70%)',
               pointerEvents: 'none',
               opacity: 0.2,
             }} />

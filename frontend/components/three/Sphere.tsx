@@ -99,7 +99,7 @@ export function WireframeSphere({ mouseX = 0, mouseY = 0, simplified = false }: 
       })
 
       // Draw edges
-      ctx.strokeStyle = 'rgba(255,255,255,0.04)'
+      ctx.strokeStyle = '#E5E7EB'
       ctx.lineWidth = 0.5
       for (const [a, b] of edges) {
         const pa = projected[a]
@@ -124,9 +124,9 @@ export function WireframeSphere({ mouseX = 0, mouseY = 0, simplified = false }: 
         // Teal glow node
         ctx.globalAlpha = alpha * 0.8
         const grad = ctx.createRadialGradient(pp[0], pp[1], 0, pp[0], pp[1], nodeSize * 3)
-        grad.addColorStop(0, 'rgba(0, 229, 204, 0.9)')
-        grad.addColorStop(0.4, 'rgba(0, 229, 204, 0.3)')
-        grad.addColorStop(1, 'rgba(0, 229, 204, 0)')
+        grad.addColorStop(0, 'rgba(37,99,235, 0.9)')
+        grad.addColorStop(0.4, 'rgba(37,99,235, 0.3)')
+        grad.addColorStop(1, 'rgba(37,99,235, 0)')
         ctx.fillStyle = grad
         ctx.beginPath()
         ctx.arc(pp[0], pp[1], nodeSize * 3, 0, Math.PI * 2)
@@ -134,7 +134,7 @@ export function WireframeSphere({ mouseX = 0, mouseY = 0, simplified = false }: 
 
         // Solid core
         ctx.globalAlpha = alpha
-        ctx.fillStyle = '#00E5CC'
+        ctx.fillStyle = '#2563EB'
         ctx.beginPath()
         ctx.arc(pp[0], pp[1], Math.max(0.5, nodeSize * 0.6), 0, Math.PI * 2)
         ctx.fill()

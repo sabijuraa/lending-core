@@ -5,11 +5,11 @@ import { RATE_MODEL_PARAMS } from '@/lib/contracts'
 interface Props { utilization: number; kink?: number; animated?: boolean; height?: number; showLabel?: boolean }
 
 export function UtilizationBar({ utilization, kink = RATE_MODEL_PARAMS.kink, animated = true, height = 8, showLabel = true }: Props) {
-  const color = utilization > kink * 0.85 ? '#F5A623' : '#00E5CC'
+  const color = utilization > kink * 0.85 ? '#D97706' : '#2563EB'
   return (
     <div>
       <div style={{ position: 'relative', width: '100%' }}>
-        <div style={{ height, background: '#1A1B1E', borderRadius: height / 2, overflow: 'hidden', position: 'relative' }}>
+        <div style={{ height, background: '#E5E7EB', borderRadius: height / 2, overflow: 'hidden', position: 'relative' }}>
           <motion.div style={{ position: 'absolute', top: 0, left: 0, height: '100%', background: color, borderRadius: height / 2, transformOrigin: 'left' }}
             initial={{ scaleX: 0 }} animate={{ scaleX: utilization }}
             transition={animated ? { duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.1 } : { duration: 0 }} />

@@ -1,7 +1,9 @@
 'use client'
 import { useEffect, useRef } from 'react'
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
+import { motion, useMotionValue, useTransform, animate, useReducedMotion } from 'framer-motion'
 import { getHealthStatus } from '@/lib/formatting'
+
+const MAX = 2.5
 
 interface Props { value: number; size?: 'lg' | 'sm'; showLabel?: boolean }
 
@@ -11,16 +13,19 @@ export function HealthGauge({ value, size = 'lg', showLabel = true }: Props) {
   const r = size === 'lg' ? 60 : 36
   const sw = size === 'lg' ? 8 : 5
   const status = getHealthStatus(value)
-  const color = status === 'safe' ? '#00C48C' : status === 'warning' ? '#F5A623' : '#E55353'
-  const mv = useMotionValue(1)
-  const angle = useTransform(mv, (h) => -90 + (Math.max(1, Math.min(4, h)) - 1) / 3 * 180)
-  const prev = useRef(1)
+  const color = status === 'safe' ? '#059669' : status === 'warning' ? '#D97706' : '#DC2626'
+  // Arc runs from 0 on the left (red) through 1.0 (amber) to 2.5 and above on the right (green).
+  const reduce = useReducedMotion()
+  const mv = useMotionValue(0)
+  const angle = useTransform(mv, (h) => -90 + Math.max(0, Math.min(MAX, h)) / MAX * 180)
+  const prev = useRef(0)
 
   useEffect(() => {
-    const c = animate(prev.current, value, { duration: 0.8, ease: [0.34, 1.56, 0.64, 1], onUpdate: (v) => mv.set(v) })
-    prev.current = value
+    const target = Number.isFinite(value) ? value : MAX
+    const c = animate(prev.current, target, { duration: reduce ? 0 : 1.1, ease: [0.22, 1, 0.36, 1], onUpdate: (v) => mv.set(v) })
+    prev.current = Number.isFinite(value) ? value : MAX
     return c.stop
-  }, [value, mv])
+  }, [value, mv, reduce])
 
   const arc = (a1: number, a2: number) => {
     const r2p = (a: number) => ({ x: cx + r * Math.cos(a * Math.PI / 180), y: cy + r * Math.sin(a * Math.PI / 180) })
@@ -30,14 +35,14 @@ export function HealthGauge({ value, size = 'lg', showLabel = true }: Props) {
 
   return (
     <div style={{ position: 'relative', width: dim, height: dim / 2 + 20 }}>
-      <svg width={dim} height={dim / 2 + 20} viewBox={`0 0 ${dim} ${dim / 2 + 20}`}>
-        <path d={arc(-180, 0)} fill="none" stroke="#1A1B1E" strokeWidth={sw} strokeLinecap="round" />
-        <path d={arc(-180, -120)} fill="none" stroke="#00C48C" strokeWidth={sw} strokeLinecap="round" opacity="0.8" />
-        <path d={arc(-120, -60)} fill="none" stroke="#F5A623" strokeWidth={sw} strokeLinecap="round" opacity="0.8" />
-        <path d={arc(-60, 0)} fill="none" stroke="#E55353" strokeWidth={sw} strokeLinecap="round" opacity="0.8" />
+      <svg role="img" aria-label={`Health factor ${Number.isFinite(value) ? value.toFixed(2) : 'with no debt'}`} width={dim} height={dim / 2 + 20} viewBox={`0 0 ${dim} ${dim / 2 + 20}`}>
+        <path d={arc(-180, 0)} fill="none" stroke="#E5E7EB" strokeWidth={sw} strokeLinecap="round" />
+        <path d={arc(-180, -108)} fill="none" stroke="var(--danger)" strokeWidth={sw} strokeLinecap="round" opacity="0.85" />
+        <path d={arc(-108, -72)} fill="none" stroke="var(--warning)" strokeWidth={sw} opacity="0.85" />
+        <path d={arc(-72, 0)} fill="none" stroke="var(--positive)" strokeWidth={sw} strokeLinecap="round" opacity="0.85" />
         <motion.g style={{ originX: `${cx}px`, originY: `${cy}px`, rotate: angle }}>
-          <line x1={cx} y1={cy} x2={cx} y2={cy - r + sw / 2 + 2} stroke="white" strokeWidth="2" strokeLinecap="round" />
-          <circle cx={cx} cy={cy} r={4} fill="white" />
+          <line x1={cx} y1={cy} x2={cx} y2={cy - r + sw / 2 + 2} stroke="var(--text-1)" strokeWidth="2" strokeLinecap="round" />
+          <circle cx={cx} cy={cy} r={4} fill="var(--text-1)" />
           <circle cx={cx} cy={cy} r={2} fill={color} />
         </motion.g>
         {showLabel && <>

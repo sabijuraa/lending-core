@@ -6,7 +6,7 @@ interface Props { lastUpdate: number; maxStaleness: number; showLabel?: boolean;
 
 export function OracleDot({ lastUpdate, maxStaleness, showLabel = false, size = 8 }: Props) {
   const status = getOracleStatus(lastUpdate, maxStaleness)
-  const color = status === 'fresh' ? '#00C48C' : status === 'warning' ? '#F5A623' : '#E55353'
+  const color = status === 'fresh' ? '#059669' : status === 'warning' ? '#D97706' : '#DC2626'
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={`Oracle: ${status}`}>
       <div style={{ position: 'relative', width: size, height: size }}>

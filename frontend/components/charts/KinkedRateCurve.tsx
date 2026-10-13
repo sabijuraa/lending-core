@@ -59,7 +59,7 @@ export function KinkedRateCurve({ currentUtilization = 0.713, size = 'card', int
       <svg ref={svgRef} viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto', overflow: 'visible' }}
         onMouseMove={handleMove} onMouseLeave={() => setHoverU(null)}>
         {[0, 0.33, 0.67, 1].map(v => (
-          <line key={v} x1={p.l} y1={p.t + ch - v * ch} x2={p.l + cw} y2={p.t + ch - v * ch} stroke="#1A1B1E" strokeWidth="0.5" />
+          <line key={v} x1={p.l} y1={p.t + ch - v * ch} x2={p.l + cw} y2={p.t + ch - v * ch} stroke="#E5E7EB" strokeWidth="0.5" />
         ))}
         {size !== 'mini' && ['0%', '20%', '40%', '60%', '80%', '100%'].map((l, i) => (
           <text key={l} x={p.l + (i / 5) * cw} y={height - 4} textAnchor="middle" fill="#6B7280" fontSize="10" fontFamily="JetBrains Mono">{l}</text>
@@ -67,18 +67,18 @@ export function KinkedRateCurve({ currentUtilization = 0.713, size = 'card', int
         <line x1={kinkX} y1={p.t} x2={kinkX} y2={p.t + ch} stroke="#6B7280" strokeWidth="0.5" strokeDasharray="3,3" />
         {size !== 'mini' && <text x={kinkX} y={p.t - 6} textAnchor="middle" fill="#6B7280" fontSize="10">Kink</text>}
         <motion.path d={sPath} fill="none" stroke="#60A5FA" strokeWidth={1.5} strokeDasharray="4,3" initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: drawn ? 1 : 0, opacity: drawn ? 0.7 : 0 }} transition={{ duration: 0.8, delay: 0.2 }} />
-        <motion.path d={bPath} fill="none" stroke="#00E5CC" strokeWidth={2} initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: drawn ? 1 : 0, opacity: drawn ? 1 : 0 }} transition={{ duration: 0.8 }} />
+        <motion.path d={bPath} fill="none" stroke="#2563EB" strokeWidth={2} initial={{ pathLength: 0, opacity: 0 }} animate={{ pathLength: drawn ? 1 : 0, opacity: drawn ? 1 : 0 }} transition={{ duration: 0.8 }} />
         {interactive && hoverU !== null && <>
-          <line x1={dotX} y1={p.t} x2={dotX} y2={p.t + ch} stroke="#1A1B1E" strokeWidth="0.5" strokeDasharray="3,3" />
-          <line x1={p.l} y1={dotY} x2={dotX} y2={dotY} stroke="#1A1B1E" strokeWidth="0.5" strokeDasharray="3,3" />
+          <line x1={dotX} y1={p.t} x2={dotX} y2={p.t + ch} stroke="#E5E7EB" strokeWidth="0.5" strokeDasharray="3,3" />
+          <line x1={p.l} y1={dotY} x2={dotX} y2={dotY} stroke="#E5E7EB" strokeWidth="0.5" strokeDasharray="3,3" />
         </>}
         {dotOn && <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <motion.circle cx={dotX} cy={dotY} r={10} fill="transparent" stroke="var(--color-accent)" strokeWidth="0.5" opacity={0.3}
             animate={hoverU === null ? { r: [10, 14, 10], opacity: [0.3, 0, 0.3] } : {}} transition={{ duration: 2, repeat: Infinity }} />
           <circle cx={dotX} cy={dotY} r={5} fill="white" stroke="var(--color-accent)" strokeWidth="1.5" />
         </motion.g>}
-        <line x1={p.l} y1={p.t} x2={p.l} y2={p.t + ch} stroke="#1A1B1E" strokeWidth="0.5" />
-        <line x1={p.l} y1={p.t + ch} x2={p.l + cw} y2={p.t + ch} stroke="#1A1B1E" strokeWidth="0.5" />
+        <line x1={p.l} y1={p.t} x2={p.l} y2={p.t + ch} stroke="#E5E7EB" strokeWidth="0.5" />
+        <line x1={p.l} y1={p.t + ch} x2={p.l + cw} y2={p.t + ch} stroke="#E5E7EB" strokeWidth="0.5" />
       </svg>
       {dotOn && (
         <div style={{ position: 'absolute', top: `${((dotY - 80) / height) * 100}%`, left: `${((dotX + 12) / width) * 100}%`, background: 'var(--color-bg-surface-2)', border: '0.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px', pointerEvents: 'none', zIndex: 10, minWidth: 140 }}>
