@@ -67,37 +67,37 @@ forge snapshot
 
 ## Deploy
 
-```bash
-# Testnet
-forge script script/Deploy.s.sol:DeployTestnet \
-  --rpc-url $RPC_URL \
-  --broadcast \
-  --verify
+Deploys sign with a Foundry keystore, so no private key sits in the environment.
 
-# Mainnet
-forge script script/Deploy.s.sol:Deploy \
-  --rpc-url $RPC_URL \
-  --broadcast \
-  --verify
+```bash
+# Base Sepolia, with faucet tokens, owner-set oracles and two markets
+forge script script/Deploy.s.sol:DeployBaseSepolia \
+  --rpc-url base_sepolia \
+  --account portfolio-deployer \
+  --broadcast --verify
 ```
 
-Requires:
-- `PRIVATE_KEY` environment variable
-- `ETHERSCAN_API_KEY` for verification
+`DeployBaseSepolia` deploys LendingCore, LendingCoreView, KinkedRateModel, three test tokens (USDC, WETH, WBTC) and two oracles, then creates the WETH/USDC and WBTC/USDC markets. Addresses and market ids land in `deployments/base-sepolia.json`. `test/DeployBaseSepolia.t.sol` runs the same deploy in-process and drives supply, borrow, repay and liquidation through it.
+
+The deployer is `0x9932B05213af8D82482c3Ce155AAA1DF4Bf9838B`. Nothing is broadcast yet because it holds no Base Sepolia ETH, so there are no live addresses to link.
+
+`ETHERSCAN_API_KEY` enables verification through the Etherscan v2 API.
+
+## Indexer
+
+`indexer/` is a Ponder project that indexes every LendingCore event on Base Sepolia into markets, positions, transactions, liquidations and protocol totals. See [indexer/README.md](./indexer/README.md).
 
 ## Frontend
 
-Next.js 16 application with:
-- Market overview and creation
-- Supply/borrow/repay interfaces
-- Portfolio tracking
-- Liquidation monitoring
-- Analytics dashboard
+Next.js 16 app in `frontend/` with a light clinical design and the health factor gauge as its signature. Pages cover the landing story, markets, market detail, supply, borrow, dashboard, liquidations, analytics, how it works, docs, security and about.
+
+All reads and writes go through a DataProvider. The mock provider ships illustrative data that changes as you act on it. The chain provider reads LendingCore with viem and writes through wagmi.
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                                  # demo data
+NEXT_PUBLIC_DATA_SOURCE=chain npm run dev    # Base Sepolia, needs NEXT_PUBLIC_* addresses
 ```
 
 ## Security
