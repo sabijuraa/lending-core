@@ -31,11 +31,11 @@ contract LendingCoreView {
         returns (uint256 healthFactor)
     {
         bytes32 id = core.idOf(params);
-        (uint256 supplyShares, uint256 borrowShares, uint256 collateral) = core.position(id, user);
+        (, uint256 borrowShares, uint256 collateral) = core.position(id, user);
 
         if (borrowShares == 0) return type(uint256).max;
 
-        (uint256 totalSupplyAssets, uint256 totalSupplyShares, uint256 totalBorrowAssets, uint256 totalBorrowShares,) = core.market(id);
+        (,, uint256 totalBorrowAssets, uint256 totalBorrowShares,) = core.market(id);
 
         uint256 borrowed = borrowShares.toAssetsUp(totalBorrowAssets, totalBorrowShares);
         uint256 price = OracleLib.fetchPrice(params.oracle, params.maxStaleness);
