@@ -47,7 +47,7 @@ export function getOracleStatus(lastUpdate: number, maxStaleness: number): 'fres
 }
 
 export function getHealthStatus(h: number): 'safe' | 'warning' | 'danger' {
-  if (h > 2.0) return 'safe'
-  if (h > 1.15) return 'warning'
+  if (h > 1.5) return 'safe'
+  if (h > 1.1) return 'warning'
   return 'danger'
 }
