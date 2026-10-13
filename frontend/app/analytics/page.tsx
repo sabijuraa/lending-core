@@ -91,8 +91,8 @@ export default function AnalyticsPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           {[
-            { key: 'tvl', label: 'Total Value Locked', val: '$44.5M', color: '#00E5CC', gradId: 'tvl', fmt: (v: number) => formatUSD(v, true) },
-            { key: 'util', label: 'Utilization', val: '71.3%', color: '#F5A623', gradId: 'util', fmt: (v: number) => `${v}%` },
+            { key: 'tvl', label: 'Total Value Locked', val: '$44.5M', color: '#2563EB', gradId: 'tvl', fmt: (v: number) => formatUSD(v, true) },
+            { key: 'util', label: 'Utilization', val: '71.3%', color: '#D97706', gradId: 'util', fmt: (v: number) => `${v}%` },
           ].map(({ key, label, val, color, gradId }) => (
             <motion.div key={key} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card" style={{ padding: '20px 20px 12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>

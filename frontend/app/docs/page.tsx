@@ -69,7 +69,7 @@ const CONTENT: Record<string, { title: string; content: React.ReactNode }> = {
     content: (
       <>
         <p>Every other lending protocol connects markets together. When one oracle fails, the damage spreads everywhere connected to it.</p>
-        <p>lending-core keeps every market completely separate — each one has its own oracle, its own collateral, its own rules. A problem in one market stays in that market.</p>
+        <p>lending-core keeps every market completely separate. Each one has its own oracle, its own collateral, its own rules. A problem in one market stays in that market.</p>
         <h3>The core mechanism</h3>
         <ol>
           <li>You deposit collateral into a specific market</li>
@@ -146,10 +146,10 @@ const CONTENT: Record<string, { title: string; content: React.ReactNode }> = {
         <p>The discount liquidators receive on collateral. At 5% bonus, liquidators pay $95 for $100 of collateral.</p>
         <h3>Rate model parameters</h3>
         <ul>
-          <li><strong>Base rate:</strong> 2% — the rate at 0% utilization</li>
-          <li><strong>Kink:</strong> 80% — the utilization inflection point</li>
-          <li><strong>Kink rate:</strong> 10% — the rate at the kink</li>
-          <li><strong>Max rate:</strong> 150% — the rate at 100% utilization</li>
+          <li><strong>Base rate:</strong> 2%, the rate at 0% utilization</li>
+          <li><strong>Kink:</strong> 80%, the utilization inflection point</li>
+          <li><strong>Kink rate:</strong> 10%, the rate at the kink</li>
+          <li><strong>Max rate:</strong> 150%, the rate at 100% utilization</li>
         </ul>
       </>
     ),
@@ -163,7 +163,7 @@ const CONTENT: Record<string, { title: string; content: React.ReactNode }> = {
           <span className="keyword">function</span> <span className="function">price</span>() <span className="keyword">external</span> <span className="keyword">view</span> <span className="keyword">returns</span> (<span className="keyword">uint256</span>);
         </div>
         <h3>Fail-closed behavior</h3>
-        <p>If the oracle returns 0 or reverts, all operations on that market halt. This is intentional — it&apos;s better to pause than to operate on bad data.</p>
+        <p>If the oracle returns 0 or reverts, all operations on that market halt. This is intentional. It&apos;s better to pause than to operate on bad data.</p>
         <h3>Staleness</h3>
         <p>The protocol does not enforce staleness internally. Market creators should use wrapper oracles that check for staleness.</p>
       </>
@@ -274,9 +274,9 @@ const CONTENT: Record<string, { title: string; content: React.ReactNode }> = {
         <p>Liquidators need to monitor all borrowing positions for health factor drops.</p>
         <h3>Events to watch</h3>
         <ul>
-          <li><code>Borrow</code> — new position created</li>
-          <li><code>Repay</code> — position reduced</li>
-          <li><code>Liquidate</code> — position liquidated</li>
+          <li><code>Borrow</code> new position created</li>
+          <li><code>Repay</code> position reduced</li>
+          <li><code>Liquidate</code> position liquidated</li>
         </ul>
         <p>Index these events and recalculate health factors whenever oracle prices update.</p>
       </>
@@ -329,7 +329,7 @@ const CONTENT: Record<string, { title: string; content: React.ReactNode }> = {
           <li>The market could become insolvent</li>
         </ul>
         <h3>Mitigations</h3>
-        <p>lending-core&apos;s isolation model limits the blast radius. A manipulated oracle only affects its own market — other markets continue operating normally.</p>
+        <p>lending-core&apos;s isolation model limits the blast radius. A manipulated oracle only affects its own market. Other markets continue operating normally.</p>
       </>
     ),
   },
@@ -354,11 +354,11 @@ const CONTENT: Record<string, { title: string; content: React.ReactNode }> = {
       <>
         <p>All smart contracts carry risk. lending-core is:</p>
         <ul>
-          <li>Audited by Trail of Bits</li>
+          <li>Not yet externally audited</li>
           <li>Covered by invariant-based fuzz testing</li>
           <li>Immutable (no upgrades)</li>
         </ul>
-        <p>However, no audit guarantees safety. Use at your own risk.</p>
+        <p>Treat it as testnet software and use it at your own risk.</p>
       </>
     ),
   },
@@ -367,7 +367,7 @@ const CONTENT: Record<string, { title: string; content: React.ReactNode }> = {
     content: (
       <>
         <h3>Context</h3>
-        <p>Most lending protocols pool assets across markets for capital efficiency. This creates systemic risk — one bad oracle can drain multiple markets.</p>
+        <p>Most lending protocols pool assets across markets for capital efficiency. This creates systemic risk. One bad oracle can drain multiple markets.</p>
         <h3>Decision</h3>
         <p>Every market in lending-core is completely isolated. Markets share no state, no liquidity, no oracles.</p>
         <h3>Consequences</h3>

@@ -2,15 +2,11 @@
 import { useState, useEffect, useRef, useSyncExternalStore } from 'react'
 import { motion, useInView } from 'framer-motion'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
+import { HealthGauge } from '@/components/charts/HealthGauge'
 import { ArrowRight, ArrowUp, Bank, Shield, CheckCircle, Lock, ArrowClockwise } from '@phosphor-icons/react'
 import { ScrambleText } from '@/components/ui/ScrambleText'
 import { KinkedRateCurve } from '@/components/charts/KinkedRateCurve'
 
-const WireframeSphere = dynamic(
-  () => import('@/components/three/Sphere').then(m => m.WireframeSphere),
-  { ssr: false }
-)
 
 const emptySubscribe = () => () => {}
 const getClientSnapshot = () => true
@@ -35,7 +31,9 @@ export default function HomePage() {
       <IsolationSection />
       <WhatYouCanDoSection />
       <RateModelSection />
-      <NumbersSection />
+      <LiquidationSection />
+      <WhoSection />
+      <FAQSection />
       <SecuritySection />
       <MechanismSection />
       <EcosystemSection />
@@ -45,223 +43,39 @@ export default function HomePage() {
 }
 
 function HeroSection({ mouse, mounted }: { mouse: { x: number; y: number }; mounted: boolean }) {
+  void mouse; void mounted
   return (
-    <section style={{ position: 'relative', minHeight: '100vh', overflow: 'hidden' }}>
-      {/* Sphere */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        pointerEvents: 'none',
-      }}>
-        <div style={{ width: '85vmin', height: '85vmin', maxWidth: 720, maxHeight: 720 }}>
-          {mounted && <WireframeSphere mouseX={mouse.x} mouseY={mouse.y} />}
-        </div>
-      </div>
-
-      {/* Purple glow */}
-      <div style={{
-        position: 'absolute', top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: 600, height: 600, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Teal glow */}
-      <div style={{
-        position: 'absolute', top: '35%', left: '55%',
-        width: 400, height: 400, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(0,229,204,0.07) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Readability overlay */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse 80% 70% at center, rgba(5,6,8,0.15) 0%, rgba(5,6,8,0.7) 65%, rgba(5,6,8,0.95) 100%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Floating decorations */}
-      <svg className="float-a" style={{ position: 'absolute', top: '12%', left: '8%', opacity: 0.12 }}
-        width="32" height="32" viewBox="0 0 32 32">
-        <polygon points="16,2 30,16 16,30 2,16" fill="none" stroke="#00E5CC" strokeWidth="0.5" />
-      </svg>
-      <svg className="float-b" style={{ position: 'absolute', bottom: '15%', right: '10%', opacity: 0.1 }}
-        width="40" height="40" viewBox="0 0 40 40">
-        <polygon points="20,4 36,36 4,36" fill="none" stroke="#7C3AED" strokeWidth="0.5" />
-      </svg>
-      <svg className="float-c" style={{ position: 'absolute', top: '20%', right: '12%', opacity: 0.1 }}
-        width="28" height="28" viewBox="0 0 28 28">
-        <polygon points="14,2 24,8 24,20 14,26 4,20 4,8" fill="none" stroke="#00E5CC" strokeWidth="0.5" />
-      </svg>
-
-      {/* Content */}
-      <div style={{
-        position: 'relative', zIndex: 10,
-        minHeight: '100vh',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        textAlign: 'center', padding: '80px 24px 40px',
-      }}>
-        {/* Live badge */}
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '6px 14px', marginBottom: 36,
-            background: 'rgba(0,229,204,0.06)',
-            border: '0.5px solid rgba(0,229,204,0.2)',
-            borderRadius: 20, backdropFilter: 'blur(8px)',
-          }}
-        >
-          <span style={{
-            width: 6, height: 6, borderRadius: '50%',
-            background: 'var(--positive)',
-            animation: 'pulse-dot 2s ease-in-out infinite'
-          }} />
-          <span style={{
-            fontFamily: 'var(--font-mono)', fontSize: 11,
-            color: 'var(--text-2)', letterSpacing: '0.06em'
-          }}>
-            LIVE · ARBITRUM SEPOLIA
-          </span>
-        </motion.div>
-
-        {/* Headlines */}
-        <div style={{ overflow: 'hidden', marginBottom: 4 }}>
+    <section style={{ padding: 'clamp(56px, 10vw, 120px) 0 clamp(48px, 8vw, 96px)', borderBottom: '1px solid var(--border-default)' }}>
+      <div className="section-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 48, alignItems: 'center' }}>
+        <div>
+          <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12, letterSpacing: '0.08em', color: 'var(--accent)', marginBottom: 20 }}>ISOLATED LENDING MARKETS ON BASE</p>
           <motion.h1
-            initial={{ y: '110%' }}
-            animate={{ y: 0 }}
-            transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(52px, 8vw, 96px)',
-              fontWeight: 800,
-              lineHeight: 1.0,
-              letterSpacing: '-0.04em',
-              color: 'var(--text-1)',
-            }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            style={{ fontSize: 'clamp(40px, 6vw, 64px)', fontWeight: 600, letterSpacing: '-0.03em', lineHeight: 1.05, color: 'var(--text-1)', marginBottom: 20 }}
           >
-            Lend anything.
+            Lend and borrow on-chain with transparent rates.
           </motion.h1>
-        </div>
-
-        <div style={{ overflow: 'hidden', marginBottom: 28 }}>
-          <motion.h1
-            initial={{ y: '110%' }}
-            animate={{ y: 0 }}
-            transition={{ duration: 0.7, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(52px, 8vw, 96px)',
-              fontWeight: 800,
-              lineHeight: 1.0,
-              letterSpacing: '-0.04em',
-              color: 'var(--accent)',
-            }}
-          >
-            Risk nothing else.
-          </motion.h1>
-        </div>
-
-        {/* Sub */}
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          style={{
-            fontSize: 'clamp(16px, 2vw, 19px)',
-            color: 'var(--text-2)',
-            lineHeight: 1.65,
-            maxWidth: 480,
-            marginBottom: 36,
-          }}
-        >
-          Every market is completely isolated. A bad oracle can drain one market.
-          It cannot reach another.
-        </motion.p>
-
-        {/* CTAs */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.85 }}
-          style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 48 }}
-        >
-          <Link href="/markets" className="btn btn-primary btn-lg">
-            Start earning
-            <ArrowRight size={17} weight="bold" />
-          </Link>
-          <Link href="/docs" className="btn btn-ghost btn-lg">Read the docs</Link>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.0 }}
-          style={{
-            display: 'flex', gap: 0,
-            background: 'rgba(8,10,15,0.7)',
-            border: '0.5px solid var(--border-default)',
-            borderRadius: 'var(--r-xl)',
-            backdropFilter: 'blur(16px)',
-            overflow: 'hidden',
-          }}
-        >
-          {[
-            { value: '$44.5M', label: 'in lending', accent: false },
-            { value: '$29.9M', label: 'in borrowing', accent: false },
-            { value: '$0', label: 'in bad debt', accent: true },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ filter: 'blur(8px)', opacity: 0, scale: 0.94 }}
-              animate={{ filter: 'blur(0)', opacity: 1, scale: 1 }}
-              transition={{ delay: 1.1 + i * 0.12, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              style={{
-                padding: '18px 32px',
-                textAlign: 'center',
-                borderRight: i < 2 ? '0.5px solid var(--border-subtle)' : 'none',
-              }}
-            >
-              <div style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 22, fontWeight: 500,
-                color: stat.accent ? 'var(--accent)' : 'var(--text-1)',
-                marginBottom: 4,
-              }}>
-                {stat.value}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text-3)', letterSpacing: '0.05em' }}>
-                {stat.label}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
-          transition={{ delay: 1.5 }}
-          style={{
-            position: 'absolute', bottom: 28,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-          }}
-        >
-          <div style={{ fontSize: 10, color: 'var(--text-4)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Scroll
+          <p style={{ fontSize: 17, lineHeight: 1.6, color: 'var(--text-2)', maxWidth: 520, marginBottom: 32 }}>
+            Each market pairs one loan asset with one collateral, one oracle and one rate curve. Rates follow utilization in the open. Your health factor tells you exactly how far you are from liquidation.
+          </p>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <Link href="/markets" className="btn btn-primary btn-lg">View markets</Link>
+            <Link href="/how-it-works" className="btn btn-ghost btn-lg">How it works</Link>
           </div>
-          <motion.div
-            animate={{ y: [0, 6, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            style={{ width: 1, height: 24, background: 'linear-gradient(to bottom, var(--text-4), transparent)' }}
-          />
-        </motion.div>
+        </div>
+        <div className="card" style={{ padding: 32, display: 'grid', justifyItems: 'center', gap: 16 }}>
+          <span className="stat-label">Example borrow position</span>
+          <HealthGauge value={1.85} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+            <div><div className="stat-label">Collateral</div>10 WETH</div>
+            <div><div className="stat-label">Debt</div>13,950 USDC</div>
+            <div><div className="stat-label">Liquidation LTV</div>86%</div>
+            <div><div className="stat-label">Liquidates at</div>1,622 USDC</div>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-3)' }}>Illustrative figures at a WETH price of 3,000 USDC.</p>
+        </div>
       </div>
     </section>
   )
@@ -394,7 +208,7 @@ function IsolationDiagram({ trigger }: { trigger: boolean }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Shared pool - bad */}
       <div style={{
-        background: 'linear-gradient(145deg, #0F1219 0%, #0D1018 100%)',
+        background: 'linear-gradient(145deg, #FFFFFF 0%, #FFFFFF 100%)',
         border: '0.5px solid rgba(239,68,68,0.2)',
         borderRadius: 'var(--r-lg)',
         padding: 28,
@@ -473,8 +287,8 @@ function IsolationDiagram({ trigger }: { trigger: boolean }) {
 
       {/* Isolated - good */}
       <div style={{
-        background: 'linear-gradient(145deg, #0F1219 0%, #0D1018 100%)',
-        border: '0.5px solid rgba(0,229,204,0.2)',
+        background: 'linear-gradient(145deg, #FFFFFF 0%, #FFFFFF 100%)',
+        border: '0.5px solid rgba(37,99,235,0.2)',
         borderRadius: 'var(--r-lg)',
         padding: 28,
       }}>
@@ -579,7 +393,7 @@ function WhatYouCanDoSection() {
     {
       icon: <Shield size={24} weight="bold" />,
       title: 'Profit from protecting the protocol.',
-      desc: 'Repay an unhealthy position. Take their collateral plus a guaranteed bonus. Permissionless — any address, any time.',
+      desc: 'Repay an unhealthy position. Take their collateral plus a guaranteed bonus. Permissionless. Any address, any time.',
       bottom: (
         <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--accent)' }}>
           Liquidation bonus: 5%
@@ -801,95 +615,6 @@ function RateModelSection() {
   )
 }
 
-function NumbersSection() {
-  const ref = useRef<HTMLDivElement>(null)
-  const inView = useInView(ref, { once: true, margin: '-80px' })
-
-  const stats = [
-    {
-      value: '$0',
-      label: 'bad debt since deployment',
-      sub: 'Not one under-collateralized event since July 2026',
-      color: 'var(--accent)',
-      extra: (
-        <div style={{ marginTop: 16 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 6 }}>100% liquidations resolved</div>
-          <div style={{ height: 4, background: 'var(--bg-0)', borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: '100%', background: 'var(--positive)', borderRadius: 2 }} />
-          </div>
-        </div>
-      ),
-    },
-    {
-      value: '4',
-      label: 'markets live',
-      sub: 'Each one completely isolated from the others',
-      color: 'var(--text-1)',
-      extra: (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 16 }}>
-          {['wstETH/USDC', 'WBTC/USDC', 'ETH/DAI', 'LINK/USDC'].map(m => (
-            <span key={m} className="pill">{m}</span>
-          ))}
-        </div>
-      ),
-    },
-    {
-      value: '128,000+',
-      label: 'fuzz runs. Every one passed.',
-      sub: 'Three invariants proven: solvency holds, rounding favors protocol, no position drains another.',
-      color: 'var(--text-1)',
-    },
-    {
-      value: '0.5px',
-      label: 'borders everywhere',
-      sub: 'The detail that signals precision. Thick borders are for sites that aren\'t confident in their content. Thin borders are for protocols that are.',
-      color: 'var(--text-1)',
-    },
-  ]
-
-  return (
-    <section ref={ref} style={{ background: 'var(--bg-0)', padding: '120px 0' }}>
-      <div className="section-container">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
-          {stats.map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ filter: 'blur(10px)', opacity: 0, scale: 0.95 }}
-              animate={inView ? { filter: 'blur(0)', opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 0.5, delay: 0.1 + i * 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="card-glow"
-              style={{ padding: 32 }}
-            >
-              <div style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(48px, 5vw, 64px)',
-                fontWeight: 800,
-                color: stat.color,
-                letterSpacing: '-0.03em',
-                marginBottom: 8,
-              }}>
-                {stat.value}
-              </div>
-              <div style={{
-                fontSize: 16,
-                fontWeight: 600,
-                color: 'var(--text-1)',
-                marginBottom: 8,
-              }}>
-                {stat.label}
-              </div>
-              <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.65 }}>
-                {stat.sub}
-              </p>
-              {stat.extra}
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 function SecuritySection() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-100px' })
@@ -947,9 +672,9 @@ function SecuritySection() {
           style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 40 }}
         >
           {[
-            { icon: <Shield size={14} weight="fill" />, label: 'Trail of Bits audit' },
-            { icon: <CheckCircle size={14} weight="fill" />, label: '0 critical findings' },
-            { icon: <Lock size={14} weight="fill" />, label: '$500K bug bounty' },
+            { icon: <Shield size={14} weight="fill" />, label: 'Open source on GitHub' },
+            { icon: <CheckCircle size={14} weight="fill" />, label: 'Fuzz and invariant tested' },
+            { icon: <Lock size={14} weight="fill" />, label: 'No admin keys' },
           ].map(({ icon, label }) => (
             <div
               key={label}
@@ -978,8 +703,8 @@ function SecuritySection() {
             margin: '0 auto 32px',
           }}
         >
-          We had Trail of Bits tear it apart. They found two low-severity issues. Both are fixed.
-          Zero criticals. Zero highs. The code has been running in the same state ever since.
+          The contracts have not had an external audit yet. What they do have is a public threat model,
+          invariant tests for solvency and share accounting, and markets nobody can change after creation.
         </motion.p>
 
         <motion.div
@@ -1223,10 +948,10 @@ function FinalCTASection() {
           style={{
             padding: 64,
             textAlign: 'center',
-            background: 'linear-gradient(145deg, rgba(0,229,204,0.02) 0%, rgba(124,58,237,0.01) 100%)',
+            background: 'linear-gradient(145deg, rgba(37,99,235,0.02) 0%, rgba(124,58,237,0.01) 100%)',
             border: '0.5px solid var(--accent-border)',
             borderRadius: 'var(--r-2xl)',
-            boxShadow: '0 0 0 0.5px rgba(0,229,204,0.2), 0 0 80px rgba(0,229,204,0.06), 0 0 0 0.5px rgba(124,58,237,0.1) inset',
+            boxShadow: '0 0 0 0.5px rgba(37,99,235,0.2), 0 0 80px rgba(37,99,235,0.06), 0 0 0 0.5px rgba(124,58,237,0.1) inset',
           }}
         >
           <h2 style={{
@@ -1285,6 +1010,80 @@ function FinalCTASection() {
             ))}
           </div>
         </motion.div>
+      </div>
+    </section>
+  )
+}
+
+function LiquidationSection() {
+  const steps = [
+    ['Price falls', 'The collateral price drops and the position is worth less against its debt.'],
+    ['Health factor drops below 1', 'Collateral value times the liquidation LTV no longer covers the debt.'],
+    ['A liquidator repays', 'Any address repays the full debt in the loan asset.'],
+    ['Collateral plus a bonus', 'The liquidator receives collateral worth the debt plus the market bonus, usually 5%.'],
+  ]
+  return (
+    <section style={{ padding: '96px 0', borderTop: '1px solid var(--border-default)' }}>
+      <div className="section-container">
+        <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 12 }}>How liquidation works</h2>
+        <p style={{ color: 'var(--text-2)', maxWidth: 640, marginBottom: 32 }}>
+          Liquidation is what keeps lenders whole. It is also the main risk of borrowing. If collateral cannot cover the debt, the shortfall is written off against that market&apos;s lenders and nobody else.
+        </p>
+        <ol style={{ listStyle: 'none', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          {steps.map(([t, d], i) => (
+            <li key={t} className="card" style={{ padding: 20 }}>
+              <div style={{ fontFamily: 'var(--font-mono)', color: i < 2 ? 'var(--danger)' : 'var(--accent)', marginBottom: 8 }}>0{i + 1}</div>
+              <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>{t}</h3>
+              <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.6 }}>{d}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  )
+}
+
+function WhoSection() {
+  return (
+    <section style={{ padding: '96px 0', background: 'var(--bg-3)' }}>
+      <div className="section-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+        <div className="card" style={{ padding: 28 }}>
+          <p className="stat-label" style={{ color: 'var(--accent)' }}>Supply side</p>
+          <h3 style={{ fontSize: 22, fontWeight: 600, margin: '6px 0 10px' }}>Lenders looking for yield</h3>
+          <p style={{ color: 'var(--text-2)', lineHeight: 1.6 }}>Pick the collateral you are willing to be exposed to and earn the borrow rate times utilization. Idle liquidity can be withdrawn at any time.</p>
+        </div>
+        <div className="card" style={{ padding: 28 }}>
+          <p className="stat-label" style={{ color: 'var(--purple)' }}>Borrow side</p>
+          <h3 style={{ fontSize: 22, fontWeight: 600, margin: '6px 0 10px' }}>Borrowers who want leverage or liquidity</h3>
+          <p style={{ color: 'var(--text-2)', lineHeight: 1.6 }}>Keep your exposure to an asset and borrow stablecoins against it. The gauge shows your liquidation price before you sign.</p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+const FAQS = [
+  ['How is the borrow rate set?', 'By a kinked curve on utilization. It rises slowly up to 80% utilization and fast after that, so lenders can usually withdraw.'],
+  ['What is the supply rate?', 'The borrow rate times utilization. Every borrower pays interest into the shares of every lender in that market.'],
+  ['When can I be liquidated?', 'When your health factor reaches 1 or less. That happens when debt grows past collateral value times the liquidation LTV.'],
+  ['What does a liquidator get?', 'Collateral worth the debt they repay plus the market bonus, between 1% and 20% and usually 5%.'],
+  ['Can a bad market hurt my position elsewhere?', 'No. Markets are isolated. A failing oracle or a crashing collateral only affects the market that uses it.'],
+  ['Which assets are supported?', 'On Base Sepolia there are WETH and WBTC markets that lend test USDC. Anyone can create a market with any ERC-20 pair.'],
+  ['Who can change a market?', 'Nobody. Parameters are hashed into the market id at creation and there is no admin key.'],
+  ['Is it audited?', 'Not yet. The code is open source with a written threat model and invariant tests. Treat it as testnet software.'],
+]
+
+function FAQSection() {
+  return (
+    <section style={{ padding: '96px 0' }}>
+      <div className="section-container" style={{ maxWidth: 820 }}>
+        <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 24 }}>Questions</h2>
+        {FAQS.map(([q, a]) => (
+          <details key={q} style={{ borderBottom: '1px solid var(--border-default)', padding: '18px 0' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600 }}>{q}</summary>
+            <p style={{ color: 'var(--text-2)', marginTop: 10, lineHeight: 1.6 }}>{a}</p>
+          </details>
+        ))}
       </div>
     </section>
   )

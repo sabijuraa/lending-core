@@ -16,7 +16,7 @@ export default function PrivacyPage() {
       title: 'What we store',
       items: [
         'Nothing on our servers.',
-        'All state lives on Arbitrum.',
+        'All state lives on Base.',
         'Your wallet connection is stored only in your browser\'s localStorage.',
       ],
     },

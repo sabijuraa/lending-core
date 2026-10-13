@@ -25,7 +25,7 @@ export default function TermsPage() {
     },
     {
       title: 'Updates',
-      content: 'These terms cannot be updated because there is nothing to update — the contracts cannot be changed.',
+      content: 'These terms cannot be updated because there is nothing to update. The contracts cannot be changed.',
     },
   ]
 
@@ -79,7 +79,7 @@ export default function TermsPage() {
         <ClipReveal type="fade" delay={0.5}>
           <div style={{
             padding: 40,
-            background: 'linear-gradient(145deg, rgba(0,229,204,0.04) 0%, rgba(124,58,237,0.02) 100%)',
+            background: 'linear-gradient(145deg, rgba(37,99,235,0.04) 0%, rgba(124,58,237,0.02) 100%)',
             border: '0.5px solid var(--accent-border)',
             borderRadius: 'var(--r-xl)',
             textAlign: 'center',

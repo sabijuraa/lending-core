@@ -147,7 +147,7 @@ export default function EarnPage() {
                           borderRadius: 'var(--r-md)',
                           overflow: 'hidden',
                           zIndex: 10,
-                          boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+                          boxShadow: '0 12px 40px rgba(17,24,39,0.08)',
                         }}
                       >
                         {DEMO_MARKETS.map(market => (
