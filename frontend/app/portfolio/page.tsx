@@ -2,12 +2,14 @@
 import { useState } from 'react'
 import { useConnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
-import { Wallet, ArrowRight, CaretRight, ArrowDown, ArrowUp, ArrowsClockwise, Lightning, ShieldCheck } from '@phosphor-icons/react'
+import { Wallet, ArrowRight, CaretRight, ArrowDown, ArrowUp, ArrowsClockwise, Lightning, ShieldCheck, HandCoins, Vault, Heartbeat, BookOpen } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
 import { LcHealthArc } from '@/components/portfolio/LcHealthArc'
 import { LcCardTitle, LcPill, lcPanel, lcTh, lcTd } from '@/components/market/LcUi'
+import { CountUp, LcRow, LcStoryBand, LcSectionHead } from '@/components/market/LcStory'
+import { Stagger, StaggerItem } from '@/components/ui/Reveal'
 import { useData } from '@/providers/provider'
 import { useAsync } from '@/lib/use-async'
 import { useAccountId } from '@/lib/use-account-id'
@@ -26,19 +28,32 @@ export default function PortfolioPage() {
 
   if (!account) {
     return (
-      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 20, textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Wallet size={28} style={{ color: 'var(--accent)' }} />
-        </div>
-        <div>
-          <h2 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 6 }}>Connect your wallet</h2>
-          <p style={{ color: 'var(--text-3)', maxWidth: 320, fontSize: 14 }}>
-            View and manage your positions across all isolated markets.
-          </p>
-        </div>
-        <button className="btn btn-primary" onClick={() => connect({ connector: injected() })}>
-          <Wallet size={14} /> Connect Wallet
-        </button>
+      <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px' }}>
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          style={{ ...lcPanel, maxWidth: 440, width: '100%', padding: '40px 32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}
+        >
+          <motion.div
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
+            style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Wallet size={28} style={{ color: 'var(--accent)' }} />
+          </motion.div>
+          <div>
+            <h2 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 8 }}>Your portfolio lives in your wallet</h2>
+            <p style={{ color: 'var(--text-3)', fontSize: 14, lineHeight: 1.6 }}>
+              Connect to see what you are earning, what you owe and how safe each loan is, across every market at once.
+            </p>
+          </div>
+          <button className="btn btn-primary" onClick={() => connect({ connector: injected() })}>
+            <Wallet size={14} /> Connect Wallet
+          </button>
+          <Link href="/markets" style={{ fontSize: 13, color: 'var(--text-3)' }}>Or browse the markets first</Link>
+        </motion.div>
       </div>
     )
   }
@@ -65,10 +80,12 @@ function PortfolioBody({ account }: { account: string }) {
   const lowest = indebted.length ? Math.min(...indebted.map(p => p.healthFactor)) : Infinity
   const illustrative = data.source === 'mock'
 
-  const stat = (label: string, value: string, note?: string) => (
+  const stat = (label: string, value: number, note?: string) => (
     <div>
       <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+      <div style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)' }}>
+        <CountUp value={value} format={(n) => formatUSD(n)} />
+      </div>
       {note && <div style={{ fontSize: 12, color: 'var(--text-4)', marginTop: 6 }}>{note}</div>}
     </div>
   )
@@ -76,10 +93,12 @@ function PortfolioBody({ account }: { account: string }) {
   return (
     <div style={{ minHeight: '100vh', padding: '48px 0 96px' }}>
       <div className="section-container">
-        <motion.h1 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
-          style={{ fontSize: 'clamp(32px, 4.5vw, 44px)', fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--text-1)', marginBottom: 24 }}>
-          Portfolio
-        </motion.h1>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 44px)', fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--text-1)', marginBottom: 8 }}>
+            Portfolio
+          </h1>
+          <p style={{ fontSize: 15, color: 'var(--text-3)' }}>Everything you earn and owe, in one place.</p>
+        </motion.div>
 
         {/* Overview */}
         <motion.div
@@ -90,14 +109,14 @@ function PortfolioBody({ account }: { account: string }) {
           style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr 1fr', gap: 16, marginBottom: 28 }}
         >
           <div style={{ ...lcPanel, padding: 28, display: 'flex', alignItems: 'center' }}>
-            {stat('Total Net Position', formatUSD(net), illustrative ? 'Illustrative' : undefined)}
+            {stat('Total Net Position', net, illustrative ? 'Illustrative' : undefined)}
           </div>
           <div style={{ ...lcPanel, padding: '24px 16px 16px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <LcHealthArc value={lowest} />
           </div>
           <div style={{ display: 'grid', gap: 16 }}>
-            <div style={{ ...lcPanel, padding: '20px 24px' }}>{stat('Collateral Value', formatUSD(collateralValue))}</div>
-            <div style={{ ...lcPanel, padding: '20px 24px' }}>{stat('Total Debt', formatUSD(totalDebt))}</div>
+            <div style={{ ...lcPanel, padding: '20px 24px' }}>{stat('Collateral Value', collateralValue)}</div>
+            <div style={{ ...lcPanel, padding: '20px 24px' }}>{stat('Total Debt', totalDebt)}</div>
           </div>
         </motion.div>
 
@@ -106,18 +125,23 @@ function PortfolioBody({ account }: { account: string }) {
           {(['positions', 'history'] as const).map(t => (
             <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
               style={{
-                padding: '10px 2px', marginBottom: -1, fontSize: 14, textTransform: 'capitalize', cursor: 'pointer', background: 'none', border: 'none',
+                position: 'relative', padding: '10px 2px', marginBottom: -1, fontSize: 14, textTransform: 'capitalize', cursor: 'pointer', background: 'none', border: 'none',
                 fontWeight: tab === t ? 600 : 500,
                 color: tab === t ? 'var(--text-1)' : 'var(--text-3)',
-                borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
+                transition: 'color 150ms ease',
               }}>
               {t}
+              {tab === t && (
+                <motion.span layoutId="lc-pf-tab" transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                  style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 2, background: 'var(--accent)', borderRadius: 1 }} />
+              )}
             </button>
           ))}
         </div>
 
+        <AnimatePresence mode="wait" initial={false}>
         {tab === 'positions' ? (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+          <motion.div key="positions" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.25 }}
             style={{ ...lcPanel, overflow: 'hidden', marginBottom: 24 }}>
             {list.length === 0 ? (
               <div style={{ padding: '44px 24px', textAlign: 'center' }}>
@@ -145,13 +169,13 @@ function PortfolioBody({ account }: { account: string }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {list.map(p => {
+                    {list.map((p, i) => {
                       const m = mk(p.slug)
                       const h = HEALTH[getHealthStatus(p.healthFactor)]
                       const col = m?.collateralSymbol ?? p.slug.toUpperCase()
                       const loan = m?.loanSymbol ?? ''
                       return (
-                        <tr key={p.slug}>
+                        <LcRow key={p.slug} index={i} className="lc-pf-row">
                           <td style={{ ...lcTd, paddingLeft: 24 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                               <TokenLogo symbol={col} size={32} />
@@ -172,7 +196,7 @@ function PortfolioBody({ account }: { account: string }) {
                               Manage <CaretRight size={12} />
                             </Link>
                           </td>
-                        </tr>
+                        </LcRow>
                       )
                     })}
                   </tbody>
@@ -181,7 +205,7 @@ function PortfolioBody({ account }: { account: string }) {
             )}
           </motion.div>
         ) : (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+          <motion.div key="history" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.25 }}
             style={{ ...lcPanel, padding: '8px 24px', marginBottom: 24 }}>
             {mine.length === 0
               ? <p style={{ padding: '32px 0', textAlign: 'center', fontSize: 14, color: 'var(--text-3)' }}>
@@ -190,6 +214,7 @@ function PortfolioBody({ account }: { account: string }) {
               : mine.map((a, i) => <ActivityRow key={a.id} a={a} loan={mk(a.slug)?.loanSymbol ?? ''} last={i === mine.length - 1} />)}
           </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Activity and insights */}
         <div className="lc-pf-bottom" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -204,9 +229,20 @@ function PortfolioBody({ account }: { account: string }) {
             <RiskInsight lowest={lowest} hasDebt={indebted.length > 0} />
           </section>
         </div>
+
+        <NextSteps hasPositions={list.length > 0} hasDebt={indebted.length > 0} hasSupply={totalSupplied > 0} />
       </div>
 
       <style jsx global>{`
+        .lc-pf-row td { transition: background 150ms ease; }
+        .lc-pf-row:hover td { background: var(--surface-2); }
+        .lc-step-card { display: flex; flex-direction: column; gap: 10px; padding: 22px; height: 100%; text-decoration: none; color: inherit; transition: transform 200ms var(--ease-expo), border-color 200ms ease, box-shadow 200ms ease; }
+        .lc-step-card:hover { transform: translateY(-3px); border-color: var(--border-strong); box-shadow: 0 10px 28px -16px rgba(16,43,39,0.35); }
+        .lc-step-card:hover .lc-step-go { transform: translateX(3px); }
+        .lc-step-go { transition: transform 200ms ease; }
+        @media (prefers-reduced-motion: reduce) { .lc-step-card:hover { transform: none; } }
+        @media (max-width: 1024px) { .lc-next-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+        @media (max-width: 560px) { .lc-next-grid, .lc-zone-grid { grid-template-columns: 1fr !important; } }
         @media (max-width: 960px) {
           .lc-pf-top { grid-template-columns: 1fr !important; }
           .lc-pf-bottom { grid-template-columns: 1fr !important; }
@@ -267,6 +303,89 @@ function RiskInsight({ lowest, hasDebt }: { lowest: number; hasDebt: boolean }) 
       <Link href="/docs" className="btn btn-secondary" style={{ justifySelf: 'center', minWidth: 180, justifyContent: 'center' }}>
         Learn more
       </Link>
+    </div>
+  )
+}
+
+function NextSteps({ hasPositions, hasDebt, hasSupply }: { hasPositions: boolean; hasDebt: boolean; hasSupply: boolean }) {
+  const steps = [
+    {
+      icon: <HandCoins size={18} />, href: '/markets',
+      title: hasSupply ? 'Put more to work' : 'Start earning',
+      body: hasSupply
+        ? 'Spread deposits across a few markets so no single collateral decides your returns.'
+        : 'Supply USDC to a market you trust and earn interest from borrowers, block by block.',
+      cta: 'Browse markets',
+    },
+    {
+      icon: <Vault size={18} />, href: '/borrow',
+      title: hasDebt ? 'Keep a buffer' : 'Borrow without selling',
+      body: hasDebt
+        ? 'Borrowing well below your limit gives you room to ride out a sharp price drop.'
+        : 'Post collateral and draw cash against it, while keeping your exposure to the asset.',
+      cta: hasDebt ? 'Manage loans' : 'Open a loan',
+    },
+    {
+      icon: <Lightning size={18} />, href: '/liquidations',
+      title: 'Earn as a keeper',
+      body: 'Repay loans that slipped underwater and collect the collateral plus a bonus. It keeps markets solvent.',
+      cta: 'See opportunities',
+    },
+    {
+      icon: <BookOpen size={18} />, href: '/how-it-works',
+      title: hasPositions ? 'Know your risks' : 'Learn the basics',
+      body: 'A short walk through supply, borrow, health factor and liquidation, in plain words.',
+      cta: 'How it works',
+    },
+  ]
+  return (
+    <div style={{ marginTop: 56 }}>
+      <LcSectionHead eyebrow="Next steps" title={hasPositions ? 'Make the most of your positions' : 'Where to begin'} />
+      <Stagger className="lc-next-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16, marginBottom: 40 }}>
+        {steps.map((st) => (
+          <StaggerItem key={st.title}>
+            <Link href={st.href} className="lc-card lc-step-card">
+              <span className="lc-icon-tile">{st.icon}</span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>{st.title}</span>
+              <span style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-3)', flex: 1 }}>{st.body}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>
+                {st.cta} <ArrowRight size={13} className="lc-step-go" />
+              </span>
+            </Link>
+          </StaggerItem>
+        ))}
+      </Stagger>
+
+      <LcStoryBand
+        eyebrow="Your safety net"
+        title="One number tells you how safe a loan is."
+        body="Your health factor compares what your collateral can back with what you owe. It moves with prices, so it is worth a glance whenever markets get busy."
+      >
+        <div className="lc-zone-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 24 }}>
+          {[
+            { range: 'Above 1.5', label: 'Comfortable', body: 'Plenty of room for prices to move.', color: '#9FD3B4' },
+            { range: '1.1 to 1.5', label: 'Keep an eye on it', body: 'Consider repaying a little or adding collateral.', color: '#F0C27A' },
+            { range: 'Below 1.0', label: 'Can be liquidated', body: 'Anyone may repay the loan and claim the collateral.', color: '#F2A49C' },
+          ].map((z, i) => (
+            <motion.div
+              key={z.range}
+              className="lc-dark-inset"
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.45, delay: 0.1 + i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+              style={{ padding: '16px 18px' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Heartbeat size={16} style={{ color: z.color }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF' }}>{z.range}</span>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: z.color, marginBottom: 4 }}>{z.label}</div>
+              <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--band-muted)' }}>{z.body}</div>
+            </motion.div>
+          ))}
+        </div>
+      </LcStoryBand>
     </div>
   )
 }

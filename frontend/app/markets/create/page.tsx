@@ -1,366 +1,342 @@
 'use client'
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, Info, Warning } from '@phosphor-icons/react'
+import { ArrowLeft, ArrowRight, Info, Warning, CheckCircle, LockSimple, Drop, Vault, HandCoins, Code } from '@phosphor-icons/react'
+import { TokenLogo } from '@/components/ui/TokenLogo'
+import { LcCardTitle, LcFootnote, lcPanel } from '@/components/market/LcUi'
+import { LcStoryBand, LcBandStep, LcHelpCard, LcSectionHead } from '@/components/market/LcStory'
+import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
 
-const SUPPORTED_TOKENS = [
-  { symbol: 'ETH', name: 'Ethereum', icon: 'E' },
-  { symbol: 'WBTC', name: 'Wrapped Bitcoin', icon: 'B' },
-  { symbol: 'USDC', name: 'USD Coin', icon: 'U' },
-  { symbol: 'DAI', name: 'Dai Stablecoin', icon: 'D' },
-  { symbol: 'LINK', name: 'Chainlink', icon: 'L' },
-  { symbol: 'wstETH', name: 'Wrapped stETH', icon: 'W' },
+const COLLATERALS = [
+  { symbol: 'WETH', name: 'Wrapped Ether' },
+  { symbol: 'WBTC', name: 'Wrapped Bitcoin' },
+  { symbol: 'wstETH', name: 'Wrapped staked Ether' },
+  { symbol: 'LINK', name: 'Chainlink' },
 ]
 
-const ORACLE_OPTIONS = [
-  { id: 'chainlink', name: 'Chainlink', desc: 'Industry standard price feeds' },
-  { id: 'pyth', name: 'Pyth Network', desc: 'High-frequency price updates' },
-  { id: 'custom', name: 'Custom Oracle', desc: 'Bring your own oracle contract' },
+const LOANS = [
+  { symbol: 'USDC', name: 'USD Coin' },
+  { symbol: 'DAI', name: 'Dai' },
 ]
+
+const ORACLES = [
+  { id: 'chainlink', name: 'Chainlink feed', desc: 'A Chainlink price feed wrapped in the lending-core oracle adapter' },
+  { id: 'custom', name: 'Your own oracle', desc: 'Any contract that reports a price and the time it was last updated' },
+]
+
+const STALENESS = [
+  { value: 3600, label: '1 hour' },
+  { value: 21600, label: '6 hours' },
+  { value: 86400, label: '24 hours' },
+]
+
+const EASE = [0.16, 1, 0.3, 1] as const
 
 export default function CreateMarketPage() {
   const [collateral, setCollateral] = useState('')
   const [loan, setLoan] = useState('')
   const [oracle, setOracle] = useState('chainlink')
+  const [staleness, setStaleness] = useState(3600)
   const [lltv, setLltv] = useState(80)
-  const [liquidationBonus, setLiquidationBonus] = useState(5)
+  const [bonus, setBonus] = useState(5)
+  const [reviewed, setReviewed] = useState(false)
+
+  const ready = Boolean(collateral && loan)
+  const touch = <T,>(set: (v: T) => void) => (v: T) => { set(v); setReviewed(false) }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '48px 0 96px' }}>
-      <div className="section-container" style={{ maxWidth: 720 }}>
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ marginBottom: 40 }}
-        >
-          <Link
-            href="/markets"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 13,
-              color: 'var(--text-2)',
-              textDecoration: 'none',
-              marginBottom: 24,
-            }}
-          >
-            <ArrowLeft size={14} />
-            Back to markets
-          </Link>
+    <div style={{ minHeight: '100vh', padding: '40px 0 96px' }}>
+      <div className="section-container">
+        <Link href="/markets" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-3)', textDecoration: 'none', marginBottom: 20 }}>
+          <ArrowLeft size={13} />
+          All markets
+        </Link>
 
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 40,
-            fontWeight: 700,
-            letterSpacing: '-0.02em',
-            marginBottom: 8,
-          }}>
-            Create a Market
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} style={{ marginBottom: 32 }}>
+          <div className="lc-eyebrow" style={{ marginBottom: 10 }}>Permissionless</div>
+          <h1 style={{ fontSize: 'clamp(34px, 5vw, 46px)', fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--text-1)', lineHeight: 1.05, marginBottom: 12 }}>
+            Create a market
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-2)', maxWidth: 480 }}>
-            Deploy a new isolated lending market. Once created, the market is immutable and permissionless.
+          <p style={{ fontSize: 15, color: 'var(--text-3)', maxWidth: 600, lineHeight: 1.6 }}>
+            Anyone can open a new market. You choose the pair, the price feed and how far loans may stretch. Once it is live, nobody can change those rules, including you.
           </p>
         </motion.div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="card"
-          style={{ padding: 32 }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            {/* Collateral Token */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--text-1)',
-                marginBottom: 12,
-              }}>
-                Collateral Token
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                {SUPPORTED_TOKENS.map(token => (
-                  <button
-                    key={token.symbol}
-                    onClick={() => setCollateral(token.symbol)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '14px 16px',
-                      background: collateral === token.symbol ? 'var(--accent-dim)' : 'var(--bg-2)',
-                      border: `1px solid ${collateral === token.symbol ? 'var(--accent)' : 'var(--border-default)'}`,
-                      borderRadius: 'var(--r-md)',
-                      cursor: 'pointer',
-                      transition: 'all 150ms ease',
-                    }}
-                  >
-                    <span style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      background: 'var(--bg-3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: 'var(--accent)',
-                      fontFamily: 'var(--font-mono)',
-                    }}>
-                      {token.icon}
+        <div className="lc-create-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 7fr) minmax(0, 5fr)', gap: 24, alignItems: 'start' }}>
+          {/* Form */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08, ease: EASE }}
+            style={{ ...lcPanel, padding: 'clamp(20px, 3vw, 32px)', display: 'grid', gap: 30 }}>
+            <Field step={1} label="Collateral" hint="What borrowers put up to secure their loans.">
+              <div className="lc-token-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                {COLLATERALS.map((t) => (
+                  <TokenChoice key={t.symbol} {...t} selected={collateral === t.symbol} onClick={() => touch(setCollateral)(t.symbol)} />
+                ))}
+              </div>
+            </Field>
+
+            <Field step={2} label="Loan asset" hint="What lenders deposit and borrowers receive.">
+              <div className="lc-token-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                {LOANS.map((t) => (
+                  <TokenChoice key={t.symbol} {...t} selected={loan === t.symbol} onClick={() => touch(setLoan)(t.symbol)} />
+                ))}
+              </div>
+            </Field>
+
+            <Field step={3} label="Price feed" hint="The one source this market trusts to value the collateral.">
+              <div style={{ display: 'grid', gap: 10 }}>
+                {ORACLES.map((o) => (
+                  <button key={o.id} type="button" onClick={() => touch(setOracle)(o.id)} className="lc-choice" data-selected={oracle === o.id}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 16px', textAlign: 'left' }}>
+                    <span>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{o.name}</span>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{o.desc}</span>
                     </span>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{token.symbol}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{token.name}</div>
-                    </div>
+                    <Radio on={oracle === o.id} />
                   </button>
                 ))}
               </div>
-            </div>
-
-            {/* Loan Token */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--text-1)',
-                marginBottom: 12,
-              }}>
-                Loan Token
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                {SUPPORTED_TOKENS.filter(t => t.symbol !== collateral).map(token => (
-                  <button
-                    key={token.symbol}
-                    onClick={() => setLoan(token.symbol)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '14px 16px',
-                      background: loan === token.symbol ? 'var(--accent-dim)' : 'var(--bg-2)',
-                      border: `1px solid ${loan === token.symbol ? 'var(--accent)' : 'var(--border-default)'}`,
-                      borderRadius: 'var(--r-md)',
-                      cursor: 'pointer',
-                      transition: 'all 150ms ease',
-                    }}
-                  >
-                    <span style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: '50%',
-                      background: 'var(--bg-3)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: 'var(--accent)',
-                      fontFamily: 'var(--font-mono)',
-                    }}>
-                      {token.icon}
-                    </span>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{token.symbol}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-3)' }}>{token.name}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Oracle Selection */}
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--text-1)',
-                marginBottom: 12,
-              }}>
-                Price Oracle
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {ORACLE_OPTIONS.map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setOracle(opt.id)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '16px 20px',
-                      background: oracle === opt.id ? 'var(--accent-dim)' : 'var(--bg-2)',
-                      border: `1px solid ${oracle === opt.id ? 'var(--accent)' : 'var(--border-default)'}`,
-                      borderRadius: 'var(--r-md)',
-                      cursor: 'pointer',
-                      transition: 'all 150ms ease',
-                      textAlign: 'left',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{opt.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{opt.desc}</div>
-                    </div>
-                    <div style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      border: `2px solid ${oracle === opt.id ? 'var(--accent)' : 'var(--border-strong)'}`,
-                      background: oracle === opt.id ? 'var(--accent)' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      {oracle === opt.id && (
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--bg-0)' }} />
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* LLTV Slider */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  Liquidation LTV (LLTV)
-                  <Info size={14} style={{ color: 'var(--text-3)' }} />
-                </label>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--accent)' }}>{lltv}%</span>
-              </div>
-              <input
-                type="range"
-                min={50}
-                max={95}
-                value={lltv}
-                onChange={e => setLltv(Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  height: 6,
-                  borderRadius: 3,
-                  background: `linear-gradient(to right, var(--accent) 0%, var(--accent) ${(lltv - 50) / 45 * 100}%, var(--bg-3) ${(lltv - 50) / 45 * 100}%, var(--bg-3) 100%)`,
-                  appearance: 'none',
-                  cursor: 'pointer',
-                }}
-              />
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, color: 'var(--text-4)' }}>
-                <span>50% (Safe)</span>
-                <span>95% (Risky)</span>
-              </div>
-            </div>
-
-            {/* Liquidation Bonus */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>Liquidation Bonus</label>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--warning)' }}>{liquidationBonus}%</span>
-              </div>
-              <input
-                type="range"
-                min={1}
-                max={15}
-                value={liquidationBonus}
-                onChange={e => setLiquidationBonus(Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  height: 6,
-                  borderRadius: 3,
-                  background: `linear-gradient(to right, var(--warning) 0%, var(--warning) ${(liquidationBonus - 1) / 14 * 100}%, var(--bg-3) ${(liquidationBonus - 1) / 14 * 100}%, var(--bg-3) 100%)`,
-                  appearance: 'none',
-                  cursor: 'pointer',
-                }}
-              />
-            </div>
-
-            {/* Warning */}
-            {lltv > 85 && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  padding: 16,
-                  background: 'var(--warning-dim)',
-                  border: '1px solid rgba(245,158,11,0.3)',
-                  borderRadius: 'var(--r-md)',
-                }}
-              >
-                <Warning size={18} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 2 }} />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--warning)', marginBottom: 4 }}>High LLTV Warning</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>
-                    Markets with LLTV above 85% carry higher liquidation risk. Ensure borrowers understand the risk profile.
-                  </div>
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8 }}>Pause when the price is older than</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {STALENESS.map((s) => (
+                    <button key={s.value} type="button" onClick={() => touch(setStaleness)(s.value)} className="lc-choice" data-selected={staleness === s.value}
+                      style={{ padding: '9px 0', fontSize: 13, fontWeight: 500, color: 'var(--text-2)' }}>
+                      {s.label}
+                    </button>
+                  ))}
                 </div>
-              </motion.div>
-            )}
+              </div>
+            </Field>
 
-            {/* Summary */}
-            {collateral && loan && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                style={{
-                  padding: 20,
-                  background: 'var(--bg-3)',
-                  borderRadius: 'var(--r-md)',
-                  border: '1px solid var(--border-default)',
-                }}
-              >
-                <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Market Summary</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-4)' }}>Pair</div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)' }}>{collateral} / {loan}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-4)' }}>Oracle</div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)' }}>{ORACLE_OPTIONS.find(o => o.id === oracle)?.name}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-4)' }}>LLTV</div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)' }}>{lltv}%</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-4)' }}>Liq. Bonus</div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)' }}>{liquidationBonus}%</div>
-                  </div>
+            <Field step={4} label="Liquidation LTV" hint="How much of the collateral value a loan may reach before it can be closed.">
+              <Slider value={lltv} min={50} max={95} onChange={touch(setLltv)} color="var(--accent)" left="50% careful" right="95% aggressive" />
+              <AnimatePresence>
+                {lltv > 86 && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', gap: 10, marginTop: 14, padding: '12px 14px', background: 'var(--warning-dim)', borderRadius: 'var(--r-md)', fontSize: 12.5, lineHeight: 1.55, color: 'var(--text-2)' }}>
+                      <Warning size={16} style={{ color: 'var(--warning)', flexShrink: 0, marginTop: 1 }} />
+                      Above 86% there is very little room between a healthy loan and one that is underwater. Only volatile collateral with deep liquidity should go this high, and lenders may stay away.
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Field>
+
+            <Field step={5} label="Liquidation bonus" hint="The reward a liquidator earns for closing a risky loan. The contract caps it at 20%.">
+              <Slider value={bonus} min={1} max={20} onChange={touch(setBonus)} color="var(--warning)" left="1%" right="20% cap" />
+            </Field>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              <button type="button" className="btn btn-primary btn-lg" disabled={!ready} onClick={() => setReviewed(true)}
+                style={{ width: '100%', justifyContent: 'center', opacity: ready ? 1 : 0.5, cursor: ready ? 'pointer' : 'not-allowed' }}>
+                Review market <ArrowRight size={14} />
+              </button>
+              <AnimatePresence>
+                {reviewed && (
+                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
+                    <LcFootnote icon={<Info size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />}>
+                      Creating markets from the app is not open yet on this testnet build. The same choices can be sent to createMarket on the LendingCore contract today, the developer docs show how.
+                    </LcFootnote>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+
+          {/* Live preview */}
+          <motion.aside initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.6, delay: 0.15, ease: EASE }}
+            className="lc-create-preview" style={{ position: 'sticky', top: 92, display: 'grid', gap: 16 }}>
+            <div className="lc-dark-card" style={{ padding: 24, position: 'relative', overflow: 'hidden' }}>
+              <div aria-hidden style={{ position: 'absolute', width: 260, height: 260, right: -90, top: -110, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,180,150,0.2), transparent 65%)' }} />
+              <div style={{ position: 'relative' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#9FD3B4', marginBottom: 14 }}>Your market</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, minHeight: 40 }}>
+                  <AnimatePresence mode="wait">
+                    <motion.span key={collateral || 'none'} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.2 }}>
+                      {collateral ? <TokenLogo symbol={collateral} size={36} /> : <Placeholder />}
+                    </motion.span>
+                  </AnimatePresence>
+                  <span style={{ fontSize: 22, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                    {collateral || 'Collateral'} / {loan || 'Loan'}
+                  </span>
                 </div>
-              </motion.div>
-            )}
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <PreviewLine icon={<Vault size={16} />}>
+                    Every $100 of {collateral || 'collateral'} can back up to <b>${lltv}</b> of {loan || 'debt'}.
+                  </PreviewLine>
+                  <PreviewLine icon={<HandCoins size={16} />}>
+                    Liquidators earn <b>{bonus}%</b> on top of the debt they repay.
+                  </PreviewLine>
+                  <PreviewLine icon={<Drop size={16} />}>
+                    Uses a {oracle === 'chainlink' ? 'Chainlink feed' : 'custom oracle'} and pauses if the price is older than <b>{STALENESS.find((s) => s.value === staleness)?.label}</b>.
+                  </PreviewLine>
+                  <PreviewLine icon={<LockSimple size={16} />}>
+                    These rules are locked forever the moment the market opens.
+                  </PreviewLine>
+                </div>
+              </div>
+            </div>
+            <div style={{ ...lcPanel, padding: 20 }}>
+              <LcCardTitle>Before you create</LcCardTitle>
+              {[
+                'The market id is a fingerprint of these exact settings, so a duplicate cannot be created.',
+                'Lenders decide for themselves whether your settings are safe enough to deposit.',
+                'On this testnet every market uses the same rate curve, low until 80% utilization and steep after.',
+              ].map((t) => (
+                <div key={t} style={{ display: 'flex', gap: 10, padding: '8px 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-2)' }}>
+                  <CheckCircle size={16} weight="fill" style={{ color: 'var(--positive)', flexShrink: 0, marginTop: 2 }} />
+                  {t}
+                </div>
+              ))}
+            </div>
+          </motion.aside>
+        </div>
 
-            {/* Submit Button */}
-            <button
-              disabled={!collateral || !loan}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                padding: '16px 24px',
-                fontSize: 15,
-                opacity: !collateral || !loan ? 0.5 : 1,
-                cursor: !collateral || !loan ? 'not-allowed' : 'pointer',
-              }}
-            >
-              Create Market
-            </button>
+        {/* Story band */}
+        <div style={{ marginTop: 64 }}>
+          <LcStoryBand
+            eyebrow="Why anyone can create a market"
+            title="New assets should not have to wait for a vote."
+            body="On pooled lending apps, every new asset needs approval because one bad listing can hurt everyone. Here a new market only puts its own lenders at risk, so there is nothing to vote on. Lenders read the rules and decide."
+          >
+            <div className="lc-band-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginTop: 24 }}>
+              <LcBandStep n={1} title="Someone opens it" body="Pick a pair, a price feed and the safety limits, then send one transaction." />
+              <LcBandStep n={2} title="Lenders weigh it" body="They see every rule upfront and only deposit if the terms look safe to them." />
+              <LcBandStep n={3} title="It runs on its own" body="No admin, no upgrades, no shared pool. Its risk never leaves its borders." />
+            </div>
+          </LcStoryBand>
+        </div>
 
-            <p style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center' }}>
-              Gas estimate: ~0.015 ETH. Market creation is irreversible.
-            </p>
-          </div>
-        </motion.div>
+        <div style={{ marginTop: 56 }}>
+          <LcSectionHead eyebrow="Good practice" title="What makes a market people trust" />
+          <Stagger className="lc-create-tips" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+            <StaggerItem>
+              <LcHelpCard icon={<Drop size={18} />} title="A feed that keeps up">
+                Pick a feed that updates often for this asset, and a staleness window that matches. Volatile collateral needs fresher prices.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<Vault size={18} />} title="A cushion that fits the asset">
+                Stable, liquid collateral can carry a higher LTV. Newer or thinner tokens deserve a lower one so liquidators have time to act.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<Code size={18} />} title="Settings you can explain">
+                Lenders will read every number. Clear, conservative choices attract deposits faster than aggressive ones.
+              </LcHelpCard>
+            </StaggerItem>
+          </Stagger>
+          <Reveal style={{ marginTop: 20 }}>
+            <Link href="/docs?tab=developers" className="btn btn-secondary" style={{ fontSize: 13, padding: '10px 18px' }}>
+              Developer guide to createMarket <ArrowRight size={13} />
+            </Link>
+          </Reveal>
+        </div>
+      </div>
+
+      <style jsx global>{`
+        .lc-choice {
+          background: var(--surface);
+          border: 1px solid var(--border-default);
+          border-radius: var(--r-md);
+          cursor: pointer;
+          transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+        }
+        .lc-choice:hover { border-color: var(--border-strong); }
+        .lc-choice:active { transform: scale(0.99); }
+        .lc-choice[data-selected='true'] { background: var(--accent-dim); border-color: var(--accent); }
+        .lc-range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 3px; outline: none; cursor: pointer; }
+        .lc-range::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 2px solid var(--primary); box-shadow: 0 2px 6px rgba(16,43,39,0.2); transition: transform 150ms ease; }
+        .lc-range::-webkit-slider-thumb:hover { transform: scale(1.12); }
+        .lc-range::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 2px solid var(--primary); }
+        @media (max-width: 960px) {
+          .lc-create-grid { grid-template-columns: 1fr !important; }
+          .lc-create-preview { position: static !important; }
+          .lc-band-steps, .lc-create-tips { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 420px) {
+          .lc-token-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function Field({ step, label, hint, children }: { step: number; label: string; hint: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', fontVariantNumeric: 'tabular-nums' }}>0{step}</span>
+        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)' }}>{label}</span>
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 14, paddingLeft: 28 }}>{hint}</p>
+      {children}
+    </div>
+  )
+}
+
+function TokenChoice({ symbol, name, selected, onClick }: { symbol: string; name: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="lc-choice" data-selected={selected}
+      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', textAlign: 'left' }}>
+      <TokenLogo symbol={symbol} size={30} />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{symbol}</span>
+        <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-3)' }}>{name}</span>
+      </span>
+      <Radio on={selected} />
+    </button>
+  )
+}
+
+function Radio({ on }: { on: boolean }) {
+  return (
+    <span style={{
+      width: 18, height: 18, borderRadius: '50%', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      border: `2px solid ${on ? 'var(--accent)' : 'var(--border-strong)'}`, background: on ? 'var(--accent)' : 'transparent', transition: 'all 150ms ease',
+    }}>
+      {on && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--surface)' }} />}
+    </span>
+  )
+}
+
+function Slider({ value, min, max, onChange, color, left, right }: {
+  value: number; min: number; max: number; onChange: (v: number) => void; color: string; left: string; right: string
+}) {
+  const pct = ((value - min) / (max - min)) * 100
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-3)' }}>Selected</span>
+        <motion.span key={value} initial={{ y: -4, opacity: 0.4 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.18 }}
+          style={{ fontSize: 18, fontWeight: 600, color, fontVariantNumeric: 'tabular-nums' }}>
+          {value}%
+        </motion.span>
+      </div>
+      <input type="range" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="lc-range"
+        aria-valuetext={`${value}%`}
+        style={{ background: `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, var(--accent-soft) ${pct}%, var(--accent-soft) 100%)` }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 11.5, color: 'var(--text-4)' }}>
+        <span>{left}</span>
+        <span>{right}</span>
       </div>
     </div>
   )
+}
+
+function PreviewLine({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="lc-dark-inset" style={{ display: 'flex', gap: 12, padding: '12px 14px', fontSize: 13.5, lineHeight: 1.55, color: 'var(--band-muted)' }}>
+      <span style={{ color: '#9FD3B4', flexShrink: 0, marginTop: 2 }}>{icon}</span>
+      <span className="lc-preview-text">{children}</span>
+      <style jsx>{`
+        .lc-preview-text :global(b) { color: #FFFFFF; font-weight: 600; }
+      `}</style>
+    </div>
+  )
+}
+
+function Placeholder() {
+  return <span style={{ display: 'inline-block', width: 36, height: 36, borderRadius: '50%', border: '1.5px dashed rgba(255,255,255,0.3)' }} />
 }

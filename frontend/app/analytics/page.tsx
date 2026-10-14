@@ -1,145 +1,285 @@
 'use client'
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import dynamic from 'next/dynamic'
-import { ShieldCheck } from '@phosphor-icons/react'
-import { AnimatedNumber } from '@/components/ui/AnimatedNumber'
-import { UtilizationBar } from '@/components/charts/UtilizationBar'
-import { DEMO_MARKETS } from '@/lib/contracts'
+import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Info, ArrowRight, Eye, ListChecks, LockKey } from '@phosphor-icons/react'
+import { TokenLogo } from '@/components/ui/TokenLogo'
+import { LcCardTitle, LcPill, LcFootnote, lcPanel, lcTh, lcTd, marketStatus } from '@/components/market/LcUi'
+import { CountUp, LcRow, LcStoryBand, LcHelpCard, LcSectionHead } from '@/components/market/LcStory'
+import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
+import { useData } from '@/providers/provider'
+import type { ActivityItem, MarketView } from '@/providers/types'
+import { RATE_MODEL_PARAMS } from '@/lib/contracts'
 import { formatUSD, formatPercent } from '@/lib/formatting'
 
-const AreaChart = dynamic(() => import('recharts').then(r => r.AreaChart), { ssr: false })
-const Area = dynamic(() => import('recharts').then(r => r.Area), { ssr: false })
-const XAxis = dynamic(() => import('recharts').then(r => r.XAxis), { ssr: false })
-const YAxis = dynamic(() => import('recharts').then(r => r.YAxis), { ssr: false })
-const Tooltip = dynamic(() => import('recharts').then(r => r.Tooltip), { ssr: false })
-const ResponsiveContainer = dynamic(() => import('recharts').then(r => r.ResponsiveContainer), { ssr: false })
+const EASE = [0.16, 1, 0.3, 1] as const
 
-type Range = '24h' | '7d' | '30d' | '90d'
-
-function genData(days: number) {
-  const data = []
-  let tvl = 38e6, util = 0.62
-  for (let i = days; i >= 0; i--) {
-    tvl += (Math.random() - 0.3) * 400000
-    util = Math.max(0.55, Math.min(0.82, util + (Math.random() - 0.4) * 0.02))
-    const d = new Date(Date.now() - i * 86400000)
-    data.push({ date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), tvl: Math.max(30e6, tvl), util: parseFloat((util * 100).toFixed(1)) })
-  }
-  return data
-}
-
-interface TooltipPayload {
-  name: string
-  value: number
-  color: string
-}
-
-function CT({ active, payload, label }: { active?: boolean; payload?: TooltipPayload[]; label?: string }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{ background: 'var(--color-bg-surface-2)', border: '0.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: 12 }}>
-      <div style={{ color: 'var(--color-text-muted)', marginBottom: 6, fontFamily: 'var(--font-mono)' }}>{label}</div>
-      {payload.map((p) => (
-        <div key={p.name} style={{ color: p.color, fontFamily: 'var(--font-mono)' }}>
-          {p.name === 'tvl' ? formatUSD(p.value, true) : `${p.value}%`}
-        </div>
-      ))}
-    </div>
-  )
-}
+type SortKey = 'supplied' | 'utilization' | 'supply' | 'borrow'
 
 export default function AnalyticsPage() {
-  const [range, setRange] = useState<Range>('30d')
-  const days = { '24h': 1, '7d': 7, '30d': 30, '90d': 90 }[range]
-  const data = genData(days)
-  const ranges: Range[] = ['24h', '7d', '30d', '90d']
-  const metrics = [
-    { label: 'TVL', value: 44_500_000, format: 'compact-currency' as const, change: '+$2.1M', pos: true },
-    { label: 'Borrowed', value: 29_949_800, format: 'compact-currency' as const, change: '+$890K', pos: true },
-    { label: 'Utilization', value: 71.3, format: 'percent' as const, change: '+2.1%', pos: true },
-    { label: 'Liquidations (30D)', value: 1_200_000, format: 'compact-currency' as const, sub: '47 events', pos: true },
-    { label: 'Interest (30D)', value: 284_000, format: 'compact-currency' as const, change: '+18%', pos: true },
-    { label: 'Bad Debt', value: 0, format: 'currency' as const, sub: '0 events', icon: true },
+  const data = useData()
+  const [markets, setMarkets] = useState<MarketView[]>([])
+  const [activity, setActivity] = useState<ActivityItem[]>([])
+  const [atRisk, setAtRisk] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [sortKey, setSortKey] = useState<SortKey>('supplied')
+
+  useEffect(() => {
+    Promise.all([data.getMarkets(), data.getActivity(), data.getLiquidatable()]).then(([m, a, l]) => {
+      setMarkets(m)
+      setActivity(a)
+      setAtRisk(l.filter((p) => p.healthFactor < 1).length)
+      setLoading(false)
+    })
+  }, [data])
+
+  const illustrative = data.source === 'mock'
+  const supplied = markets.reduce((s, m) => s + m.totalSupplied, 0)
+  const borrowed = markets.reduce((s, m) => s + m.totalBorrowed, 0)
+  const utilization = supplied > 0 ? (borrowed / supplied) * 100 : 0
+  const avgSupply = supplied > 0 ? markets.reduce((s, m) => s + m.supplyAPY * m.totalSupplied, 0) / supplied : 0
+
+  const sorted = useMemo(() => {
+    const key = (m: MarketView) => sortKey === 'utilization' ? m.utilization : sortKey === 'supply' ? m.supplyAPY : sortKey === 'borrow' ? m.borrowAPY : m.totalSupplied
+    return [...markets].sort((a, b) => key(b) - key(a))
+  }, [markets, sortKey])
+
+  const mix = useMemo(() => {
+    const kinds: ActivityItem['kind'][] = ['supply', 'borrow', 'repay', 'withdraw', 'liquidate']
+    return kinds.map((k) => ({ kind: k, count: activity.filter((a) => a.kind === k).length, volume: activity.filter((a) => a.kind === k).reduce((s, a) => s + a.amount, 0) }))
+  }, [activity])
+  const maxMix = Math.max(1, ...mix.map((m) => m.volume))
+
+  const stats = [
+    { label: 'Total supplied', value: supplied, f: (n: number) => formatUSD(n, true) },
+    { label: 'Total borrowed', value: borrowed, f: (n: number) => formatUSD(n, true) },
+    { label: 'Utilization', value: utilization, f: (n: number) => formatPercent(n) },
+    { label: 'Avg supply APY', value: avgSupply, f: (n: number) => formatPercent(n, 2) },
+    { label: 'Live markets', value: markets.length, f: (n: number) => String(Math.round(n)) },
+    { label: 'Loans underwater', value: atRisk, f: (n: number) => String(Math.round(n)) },
   ]
 
   return (
     <div style={{ minHeight: '100vh', padding: '48px 0 96px' }}>
       <div className="section-container">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 }}>
-          <div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 40, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>Analytics</h1>
-            <p style={{ fontSize: 14, color: 'var(--color-text-secondary)' }}>Protocol metrics, updated every block.</p>
-          </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {ranges.map(r => <button key={r} onClick={() => setRange(r)} className={`pill ${range === r ? 'pill-selected' : ''}`} style={{ cursor: 'pointer', border: 'none', fontSize: 12, padding: '5px 12px', textTransform: 'uppercase' }}>{r}</button>)}
-          </div>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} style={{ marginBottom: 28 }}>
+          <div className="lc-eyebrow" style={{ marginBottom: 10 }}>Open data</div>
+          <h1 style={{ fontSize: 'clamp(34px, 5vw, 46px)', fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--text-1)', lineHeight: 1.05, marginBottom: 10 }}>
+            Analytics
+          </h1>
+          <p style={{ fontSize: 15, color: 'var(--text-3)', maxWidth: 620, lineHeight: 1.6 }}>
+            How much is lent, how much is borrowed and how busy each market is. Nothing here is self reported, every number comes from the same contracts you use.
+          </p>
         </motion.div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10, marginBottom: 24 }}>
-          {metrics.map((m, i) => (
-            <motion.div key={m.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i }} className="card" style={{ padding: '14px 16px' }}>
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6 }}>{m.label}</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                {m.icon && <ShieldCheck size={14} weight="fill" style={{ color: 'var(--color-positive)' }} />}
-                <AnimatedNumber value={m.value} format={m.format} style={{ fontSize: 18, fontWeight: 500, color: m.icon ? 'var(--color-accent)' : undefined }} />
+        <Stagger className="lc-an-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 12, marginBottom: 20 }}>
+          {stats.map((s) => (
+            <StaggerItem key={s.label}>
+              <div style={{ ...lcPanel, padding: '18px 18px 16px', height: '100%' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8 }}>{s.label}</div>
+                <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: s.label === 'Loans underwater' && s.value > 0 ? 'var(--danger)' : 'var(--text-1)' }}>
+                  {loading ? '...' : <CountUp value={s.value} format={s.f} />}
+                </div>
+                {illustrative && <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 4 }}>Illustrative</div>}
               </div>
-              {(m.change || m.sub) && <div style={{ fontSize: 11, color: m.pos ? 'var(--color-positive)' : 'var(--color-text-muted)', marginTop: 3 }}>{m.change || m.sub}</div>}
-            </motion.div>
+            </StaggerItem>
           ))}
+        </Stagger>
+
+        <div className="lc-an-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+          <Reveal>
+            <section style={{ ...lcPanel, padding: 24, height: '100%' }}>
+              <LcCardTitle right={<span style={{ fontSize: 12, color: 'var(--text-3)' }}>Share of deposits</span>}>Where the money is</LcCardTitle>
+              <div style={{ display: 'grid', gap: 16 }}>
+                {[...markets].sort((a, b) => b.totalSupplied - a.totalSupplied).map((m, i) => (
+                  <div key={m.slug}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7, fontSize: 13 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: 'var(--text-1)', fontWeight: 500 }}>
+                        <TokenLogo symbol={m.collateralSymbol} size={20} />
+                        {m.collateralSymbol} / {m.loanSymbol}
+                      </span>
+                      <span style={{ color: 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
+                        {formatUSD(m.totalSupplied, true)}
+                        <span style={{ color: 'var(--text-4)', marginLeft: 8 }}>{formatPercent(supplied ? (m.totalSupplied / supplied) * 100 : 0, 0)}</span>
+                      </span>
+                    </div>
+                    <Bar frac={supplied ? m.totalSupplied / supplied : 0} delay={i * 0.08} color="var(--accent)" />
+                  </div>
+                ))}
+                {loading && <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Loading markets</p>}
+              </div>
+            </section>
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <section style={{ ...lcPanel, padding: 24, height: '100%' }}>
+              <LcCardTitle right={<span style={{ fontSize: 12, color: '#C7772E' }}>Kink at {formatPercent(RATE_MODEL_PARAMS.kink * 100, 0)}</span>}>How busy each market is</LcCardTitle>
+              <div style={{ display: 'grid', gap: 16 }}>
+                {markets.map((m, i) => (
+                  <div key={m.slug}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7, fontSize: 13 }}>
+                      <span style={{ color: 'var(--text-1)', fontWeight: 500 }}>{m.collateralSymbol} / {m.loanSymbol}</span>
+                      <span style={{ color: m.utilization >= RATE_MODEL_PARAMS.kink ? 'var(--warning)' : 'var(--text-2)', fontVariantNumeric: 'tabular-nums' }}>
+                        {formatPercent(m.utilization * 100, 0)} lent out
+                      </span>
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                      <Bar frac={m.utilization} delay={i * 0.08} color={m.utilization >= RATE_MODEL_PARAMS.kink ? 'var(--warning)' : 'var(--positive)'} />
+                      <span aria-hidden style={{ position: 'absolute', left: `${RATE_MODEL_PARAMS.kink * 100}%`, top: -3, bottom: -3, width: 0, borderLeft: '1.5px dashed #C7772E' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontSize: 12.5, color: 'var(--text-3)', marginTop: 18, lineHeight: 1.55 }}>
+                Past the kink, borrowing gets expensive fast. That pulls utilization back down so lenders can always withdraw.
+              </p>
+            </section>
+          </Reveal>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          {[
-            { key: 'tvl', label: 'Total Value Locked', val: '$44.5M', color: '#2563EB', gradId: 'tvl', fmt: (v: number) => formatUSD(v, true) },
-            { key: 'util', label: 'Utilization', val: '71.3%', color: '#D97706', gradId: 'util', fmt: (v: number) => `${v}%` },
-          ].map(({ key, label, val, color, gradId }) => (
-            <motion.div key={key} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="card" style={{ padding: '20px 20px 12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{label}</div>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color }}>{val}</span>
+        <div className="lc-an-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, marginBottom: 20 }}>
+          <Reveal>
+            <section style={{ ...lcPanel, overflow: 'hidden', height: '100%' }}>
+              <div style={{ padding: '20px 24px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <LcCardTitle>Market breakdown</LcCardTitle>
+                <div role="tablist" style={{ display: 'flex', gap: 4, padding: 3, background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--r-sm)', marginBottom: 16 }}>
+                  {([['supplied', 'Size'], ['utilization', 'Utilization'], ['supply', 'Supply APY'], ['borrow', 'Borrow APY']] as const).map(([k, l]) => (
+                    <button key={k} role="tab" aria-selected={sortKey === k} onClick={() => setSortKey(k)}
+                      style={{ position: 'relative', padding: '6px 10px', fontSize: 12, fontWeight: 500, border: 'none', background: 'transparent', cursor: 'pointer', color: sortKey === k ? 'var(--text-1)' : 'var(--text-3)' }}>
+                      {sortKey === k && (
+                        <motion.span layoutId="lc-an-sort" transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                          style={{ position: 'absolute', inset: 0, background: 'var(--surface)', border: '1px solid var(--border-default)', borderRadius: 6 }} />
+                      )}
+                      <span style={{ position: 'relative' }}>{l}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ height: 180 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={data} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={color} stopOpacity={0.1} />
-                        <stop offset="95%" stopColor={color} stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" tick={{ fill: '#6B7280', fontSize: 9, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} interval={Math.floor(data.length / 4)} />
-                    <YAxis tick={{ fill: '#6B7280', fontSize: 9, fontFamily: 'JetBrains Mono' }} axisLine={false} tickLine={false} width={38} tickFormatter={v => key === 'tvl' ? formatUSD(v, true) : `${v}%`} />
-                    <Tooltip content={<CT />} />
-                    <Area type="monotone" dataKey={key} stroke={color} strokeWidth={1.5} fill={`url(#${gradId})`} name={key} />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 620 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ ...lcTh, paddingLeft: 24 }}>Market</th>
+                      <th style={lcTh}>Supplied</th>
+                      <th style={lcTh}>Borrowed</th>
+                      <th style={lcTh}>Supply APY</th>
+                      <th style={lcTh}>Borrow APY</th>
+                      <th style={{ ...lcTh, paddingRight: 24 }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody key={sortKey}>
+                    {sorted.map((m, i) => {
+                      const st = marketStatus(m.oracleLastUpdate, m.maxStaleness)
+                      return (
+                        <LcRow key={m.slug} index={i} className="lc-an-row">
+                          <td style={{ ...lcTd, paddingLeft: 24 }}>
+                            <Link href={`/markets/${m.slug}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'inherit', textDecoration: 'none', fontWeight: 500, fontSize: 13 }}>
+                              <TokenLogo symbol={m.collateralSymbol} size={26} />
+                              {m.collateralSymbol} / {m.loanSymbol}
+                            </Link>
+                          </td>
+                          <td style={lcTd}>{formatUSD(m.totalSupplied, true)}</td>
+                          <td style={lcTd}>{formatUSD(m.totalBorrowed, true)}</td>
+                          <td style={{ ...lcTd, color: 'var(--positive)' }}>{formatPercent(m.supplyAPY)}</td>
+                          <td style={lcTd}>{formatPercent(m.borrowAPY)}</td>
+                          <td style={{ ...lcTd, paddingRight: 24 }}><LcPill tone={st.tone}>{st.label}</LcPill></td>
+                        </LcRow>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
-            </motion.div>
-          ))}
+            </section>
+          </Reveal>
+
+          <Reveal delay={0.08}>
+            <section style={{ ...lcPanel, padding: 24, height: '100%' }}>
+              <LcCardTitle>What people are doing</LcCardTitle>
+              {activity.length === 0 ? (
+                <p style={{ fontSize: 13, color: 'var(--text-3)' }}>{loading ? 'Loading activity' : 'No activity recorded yet.'}</p>
+              ) : (
+                <div style={{ display: 'grid', gap: 14 }}>
+                  {mix.map((x, i) => (
+                    <div key={x.kind}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                        <span style={{ textTransform: 'capitalize', color: 'var(--text-1)', fontWeight: 500 }}>{x.kind === 'liquidate' ? 'Liquidations' : `${x.kind}`}</span>
+                        <span style={{ color: 'var(--text-3)', fontVariantNumeric: 'tabular-nums' }}>{x.count} · {formatUSD(x.volume, true)}</span>
+                      </div>
+                      <Bar frac={x.volume / maxMix} delay={i * 0.06} color={x.kind === 'liquidate' ? 'var(--danger)' : x.kind === 'borrow' ? 'var(--warning)' : 'var(--accent)'} thin />
+                    </div>
+                  ))}
+                  <p style={{ fontSize: 12, color: 'var(--text-4)' }}>Recent transactions by type, count and volume.</p>
+                </div>
+              )}
+            </section>
+          </Reveal>
         </div>
 
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="card" style={{ overflow: 'hidden' }}>
-          <div style={{ padding: '18px 20px 14px', borderBottom: '0.5px solid var(--color-border)', display: 'flex', justifyContent: 'space-between' }}>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Market breakdown</div>
-          </div>
-          <table className="data-table">
-            <thead><tr>{['MARKET', 'TVL', 'UTILIZATION', 'SUPPLY APY', 'BORROW APY', 'RISK'].map(h => <th key={h}>{h}</th>)}</tr></thead>
-            <tbody>
-              {DEMO_MARKETS.map((m, i) => (
-                <motion.tr key={m.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.04 * i }}>
-                  <td style={{ fontSize: 14, fontWeight: 500 }}>{m.collateralSymbol} / {m.loanSymbol}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{formatUSD(m.totalSupplied, true)}</td>
-                  <td style={{ width: 160 }}><UtilizationBar utilization={m.utilization} animated={false} /></td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-positive)' }}>{formatPercent(m.supplyAPY)}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--color-warning)' }}>{formatPercent(m.borrowAPY)}</td>
-                  <td><span className={m.utilization > 0.75 ? 'pill pill-warning' : 'pill pill-positive'}>{m.utilization > 0.75 ? 'Medium' : 'Low'}</span></td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </motion.div>
+        <LcFootnote icon={<Info size={16} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}>
+          {illustrative
+            ? 'All figures are illustrative and come from the demo data set for the Base Sepolia testnet.'
+            : 'All figures are read live from the Base Sepolia testnet.'}
+        </LcFootnote>
+
+        <div style={{ marginTop: 64 }}>
+          <LcStoryBand
+            eyebrow="Nothing to take on trust"
+            title="If it is on this page, you can check it yourself."
+            body="Every balance, rate and liquidation lives in public contracts. This page reads them, it does not keep its own books. Anyone with a block explorer can reach the same numbers."
+          />
+        </div>
+
+        <div style={{ marginTop: 56 }}>
+          <LcSectionHead eyebrow="Reading the numbers" title="Three things worth knowing" />
+          <Stagger className="lc-an-tips" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 }}>
+            <StaggerItem>
+              <LcHelpCard icon={<Eye size={18} />} title="Utilization drives rates">
+                The more of a market is lent out, the more borrowers pay and the more lenders earn. That is why rates move on their own.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<LockKey size={18} />} title="Totals do not mix risk">
+                Adding markets together is only a summary. Each one still stands alone, a problem in one never touches the others.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<ListChecks size={18} />} title="Underwater loans are normal">
+                A few loans dipping below 1 just means liquidators have work to do. The number to watch is whether they get closed quickly.
+              </LcHelpCard>
+            </StaggerItem>
+          </Stagger>
+          <Reveal style={{ marginTop: 20 }}>
+            <Link href="/markets" className="btn btn-primary" style={{ fontSize: 13, padding: '10px 18px' }}>
+              Explore the markets <ArrowRight size={13} />
+            </Link>
+          </Reveal>
+        </div>
       </div>
+
+      <style jsx global>{`
+        .lc-an-row td { transition: background 150ms ease; }
+        .lc-an-grid > * { min-width: 0; }
+        .lc-an-row:hover td { background: var(--surface-2); }
+        @media (max-width: 1100px) { .lc-an-stats { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; } }
+        @media (max-width: 960px) { .lc-an-grid, .lc-an-tips { grid-template-columns: 1fr !important; } }
+        @media (max-width: 520px) { .lc-an-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+      `}</style>
+    </div>
+  )
+}
+
+function Bar({ frac, delay = 0, color, thin }: { frac: number; delay?: number; color: string; thin?: boolean }) {
+  const reduce = useReducedMotion()
+  const w = `${Math.max(0, Math.min(1, frac)) * 100}%`
+  return (
+    <div style={{ height: thin ? 6 : 8, borderRadius: 99, background: 'var(--accent-soft)', overflow: 'hidden' }}>
+      <motion.div
+        initial={reduce ? false : { width: 0 }}
+        whileInView={{ width: w }}
+        viewport={{ once: true, amount: 0.6 }}
+        transition={{ duration: 0.9, delay, ease: EASE }}
+        style={{ height: '100%', borderRadius: 99, background: color, width: reduce ? w : undefined }}
+      />
     </div>
   )
 }

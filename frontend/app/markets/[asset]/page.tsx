@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { useConnect, useReadContract } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { formatUnits, type Address } from 'viem'
-import { ArrowLeft, Info, Wallet } from '@phosphor-icons/react'
+import { ArrowLeft, Info, Wallet, HandCoins, Vault, Drop, ChartLineUp, ShieldCheck } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
 import { useData } from '@/providers/provider'
 import { healthFactor, type MarketView } from '@/providers/types'
@@ -17,6 +17,9 @@ import TestTokenAbi from '@/lib/abi/TestToken.json'
 import { TxButton } from '@/components/market/TxButton'
 import { LcRateCurve } from '@/components/market/LcRateCurve'
 import { LcCardTitle, LcPill, LcFootnote, lcPanel, marketStatus } from '@/components/market/LcUi'
+import { CountUp, LcStoryBand } from '@/components/market/LcStory'
+import { Reveal } from '@/components/ui/Reveal'
+import { RATE_MODEL_PARAMS } from '@/lib/contracts'
 import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/ui/States'
 import { formatUSD, formatPercent, formatTimeAgo, formatNumber } from '@/lib/formatting'
 
@@ -61,10 +64,10 @@ function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; i
   const liquidity = m.totalSupplied - m.totalBorrowed
 
   const metrics = [
-    { k: 'Supply APY', v: formatPercent(m.supplyAPY), color: 'var(--positive)' },
-    { k: 'Borrow APY', v: formatPercent(m.borrowAPY), color: 'var(--text-1)' },
-    { k: 'Utilization', v: formatPercent(m.utilization * 100, 0), color: 'var(--positive)' },
-    { k: 'Available Liquidity', v: formatUSD(liquidity, true), color: 'var(--text-1)' },
+    { k: 'Supply APY', v: m.supplyAPY, f: (n: number) => formatPercent(n), color: 'var(--positive)' },
+    { k: 'Borrow APY', v: m.borrowAPY, f: (n: number) => formatPercent(n), color: 'var(--text-1)' },
+    { k: 'Utilization', v: m.utilization * 100, f: (n: number) => formatPercent(n, 0), color: 'var(--positive)' },
+    { k: 'Available Liquidity', v: liquidity, f: (n: number) => formatUSD(n, true), color: 'var(--text-1)' },
   ]
 
   const params = [
@@ -93,7 +96,7 @@ function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; i
           display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-2)',
           padding: '5px 11px', border: '1px solid var(--border-default)', borderRadius: 999, background: 'var(--surface)',
         }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2F6FED' }} />
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--positive)' }} />
           Base Sepolia
         </span>
       </motion.header>
@@ -112,7 +115,7 @@ function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; i
                 borderBottom: i < metrics.length - 1 ? '1px solid var(--border-subtle)' : 'none',
               }}>
                 <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{r.k}</span>
-                <span style={{ fontSize: 18, fontWeight: 600, color: r.color, fontVariantNumeric: 'tabular-nums' }}>{r.v}</span>
+                <CountUp value={r.v} format={r.f} style={{ fontSize: 18, fontWeight: 600, color: r.color }} />
               </div>
             ))}
           </div>
@@ -146,6 +149,10 @@ function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; i
           <ActionPanel m={m} onChanged={onChanged} />
         </motion.section>
       </div>
+
+      <Reveal style={{ marginBottom: 20 }}>
+        <ForYou m={m} />
+      </Reveal>
 
       <div style={{ marginBottom: 20 }}>
         <LcFootnote icon={<Info size={16} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}>
@@ -220,15 +227,20 @@ function ActionPanel({ m, onChanged }: { m: MarketView; onChanged: () => void })
             aria-selected={tab === t}
             onClick={() => switchTab(t)}
             style={{
-              padding: '9px 0', fontSize: 13, fontWeight: tab === t ? 600 : 500, textTransform: 'capitalize', cursor: 'pointer',
+              position: 'relative', padding: '9px 0', fontSize: 13, fontWeight: tab === t ? 600 : 500, textTransform: 'capitalize', cursor: 'pointer',
               color: tab === t ? 'var(--accent)' : 'var(--text-3)',
-              background: tab === t ? 'var(--surface)' : 'transparent',
-              border: tab === t ? '1px solid var(--accent-border)' : '1px solid transparent',
-              borderRadius: 'var(--r-sm)',
-              transition: 'all 150ms ease',
+              background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
+              transition: 'color 150ms ease',
             }}
           >
-            {t}
+            {tab === t && (
+              <motion.span
+                layoutId="lc-action-tab"
+                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+                style={{ position: 'absolute', inset: 0, background: 'var(--surface)', border: '1px solid var(--accent-border)', borderRadius: 'var(--r-sm)' }}
+              />
+            )}
+            <span style={{ position: 'relative' }}>{t}</span>
           </button>
         ))}
       </div>
@@ -330,5 +342,94 @@ function ActivityCard({ loading, error, reload, items }: {
         </div>
       ))}
     </section>
+  )
+}
+
+/** Plain language reading of the market parameters, plus a three line risk summary. */
+function ForYou({ m }: { m: MarketView }) {
+  const st = marketStatus(m.oracleLastUpdate, m.maxStaleness)
+  const { kink } = RATE_MODEL_PARAMS
+  const perThousand = (1000 * m.supplyAPY) / 100
+  const borrowPerHundred = 100 * m.lltv
+  const halfwayDrop = 50
+
+  const util = m.utilization >= kink
+    ? { tone: 'warning' as const, label: 'Busy', body: `Utilization is past the ${formatPercent(kink * 100, 0)} kink, so rates are climbing and withdrawals may need to wait for repayments.` }
+    : m.utilization >= kink * 0.75
+      ? { tone: 'positive' as const, label: 'Healthy', body: `Most of the pool is lent out and earning, with room left before the ${formatPercent(kink * 100, 0)} kink.` }
+      : { tone: 'positive' as const, label: 'Plenty of room', body: 'Lots of cash is sitting ready, so withdrawals and new loans go through easily.' }
+  const cushion = m.lltv >= 0.86
+    ? { tone: 'warning' as const, label: 'Thin cushion', body: `Loans can stretch to ${formatPercent(m.lltv * 100, 0)} of collateral value, which leaves lenders less buffer in a sharp crash.` }
+    : m.lltv >= 0.75
+      ? { tone: 'positive' as const, label: 'Standard', body: `Loans close at ${formatPercent(m.lltv * 100, 0)} of collateral value, a common middle ground between borrower room and lender safety.` }
+      : { tone: 'positive' as const, label: 'Conservative', body: `Loans close early at ${formatPercent(m.lltv * 100, 0)} of collateral value, which keeps a wide buffer for lenders.` }
+  const oracle = st.oracle === 'Fresh'
+    ? { tone: 'positive' as const, label: 'Fresh', body: 'The price feed is current, so loans and liquidations use an up to date price.' }
+    : st.oracle === 'Aging'
+      ? { tone: 'warning' as const, label: 'Aging', body: 'The price feed is getting old. Once it goes stale, new loans and liquidations wait for a fresh price.' }
+      : { tone: 'danger' as const, label: 'Stale', body: 'The price feed is stale, so new loans and liquidations are waiting for a fresh price.' }
+
+  return (
+    <LcStoryBand
+      eyebrow="What this means for you"
+      title={<>{m.collateralSymbol} / {m.loanSymbol} in plain words</>}
+      aside={
+        <div className="lc-dark-inset" style={{ padding: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: '#FFFFFF', marginBottom: 14 }}>
+            <ShieldCheck size={16} /> Risk summary
+          </div>
+          {[
+            { icon: <Drop size={15} />, k: 'Price feed', v: oracle },
+            { icon: <ChartLineUp size={15} />, k: 'Utilization', v: util },
+            { icon: <Vault size={15} />, k: 'Safety cushion', v: cushion },
+          ].map((row, i) => (
+            <motion.div
+              key={row.k}
+              initial={{ opacity: 0, x: 16 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.45, delay: 0.1 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              style={{ padding: '12px 0', borderTop: i ? '1px solid rgba(255,255,255,0.08)' : 'none' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#FFFFFF' }}>{row.icon}{row.k}</span>
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999,
+                  background: row.v.tone === 'positive' ? 'rgba(124,200,150,0.16)' : row.v.tone === 'warning' ? 'rgba(232,170,80,0.18)' : 'rgba(230,110,100,0.2)',
+                  color: row.v.tone === 'positive' ? '#9FD3B4' : row.v.tone === 'warning' ? '#F0C27A' : '#F2A49C',
+                }}>
+                  {row.v.label}
+                </span>
+              </div>
+              <div style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--band-muted)' }}>{row.v.body}</div>
+            </motion.div>
+          ))}
+        </div>
+      }
+    >
+      <div style={{ display: 'grid', gap: 12, marginTop: 20 }}>
+        <div className="lc-dark-inset" style={{ padding: '16px 18px', display: 'flex', gap: 14 }}>
+          <HandCoins size={20} style={{ color: '#9FD3B4', flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--band-muted)' }}>
+            <strong style={{ color: '#FFFFFF', fontWeight: 600 }}>If you lend.</strong>{' '}
+            At today&apos;s rate, every 1,000 {m.loanSymbol} you supply earns about {formatNumber(perThousand)} {m.loanSymbol} over a year. The rate moves with demand, and you can withdraw whatever is not lent out at that moment.
+          </div>
+        </div>
+        <div className="lc-dark-inset" style={{ padding: '16px 18px', display: 'flex', gap: 14 }}>
+          <Vault size={20} style={{ color: '#9FD3B4', flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--band-muted)' }}>
+            <strong style={{ color: '#FFFFFF', fontWeight: 600 }}>If you borrow.</strong>{' '}
+            Every $100 of {m.collateralSymbol} you post supports up to ${formatNumber(borrowPerHundred, 0)} of debt before the loan can be closed. Borrow half of that and {m.collateralSymbol} can fall about {halfwayDrop}% before you are at risk.
+          </div>
+        </div>
+        <div className="lc-dark-inset" style={{ padding: '16px 18px', display: 'flex', gap: 14 }}>
+          <ShieldCheck size={20} style={{ color: '#9FD3B4', flexShrink: 0, marginTop: 2 }} />
+          <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--band-muted)' }}>
+            <strong style={{ color: '#FFFFFF', fontWeight: 600 }}>If it goes wrong.</strong>{' '}
+            A liquidator repays the loan and takes the collateral plus a {formatPercent(m.liquidationBonus * 100, 0)} bonus. Whatever happens here stays here, other markets are never touched.
+          </div>
+        </div>
+      </div>
+    </LcStoryBand>
   )
 }

@@ -3,9 +3,11 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { MagnifyingGlass, CaretLeft, CaretRight, Info } from '@phosphor-icons/react'
+import { MagnifyingGlass, CaretLeft, CaretRight, Info, Drop, ShieldCheck, ChartLineUp, Gauge, ArrowRight } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
 import { LcPill, LcOracle, LcSelect, LcFootnote, lcPanel, lcTh, lcTd, marketStatus } from '@/components/market/LcUi'
+import { CountUp, LcRow, LcStoryBand, LcHelpCard, LcSectionHead } from '@/components/market/LcStory'
+import { Stagger, StaggerItem } from '@/components/ui/Reveal'
 import { useData } from '@/providers/provider'
 import type { MarketView } from '@/providers/types'
 import { formatUSD, formatPercent } from '@/lib/formatting'
@@ -72,8 +74,8 @@ export default function MarketsPage() {
           <h1 style={{ fontSize: 'clamp(36px, 5vw, 48px)', fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--text-1)', lineHeight: 1.05, marginBottom: 10 }}>
             Markets
           </h1>
-          <p style={{ fontSize: 15, color: 'var(--text-3)' }}>
-            Discover isolated lending markets with transparent rates and risk parameters.
+          <p style={{ fontSize: 15, color: 'var(--text-3)', maxWidth: 620, lineHeight: 1.6 }}>
+            Every market here is its own small lending pool. Pick one to earn on your idle assets or borrow against what you hold, and know exactly which risks you are taking on.
           </p>
         </motion.div>
 
@@ -86,9 +88,9 @@ export default function MarketsPage() {
           style={{ ...lcPanel, display: 'flex', alignItems: 'center', gap: 0, padding: '22px 24px', marginBottom: 24 }}
         >
           {[
-            { label: 'Active Markets', value: String(markets.length) },
-            { label: illustrative ? 'Total Supplied (Illustrative)' : 'Total Supplied', value: formatUSD(totalSupplied, true) },
-            { label: illustrative ? 'Total Borrowed (Illustrative)' : 'Total Borrowed', value: formatUSD(totalBorrowed, true) },
+            { label: 'Active Markets', value: markets.length, fmt: (n: number) => String(Math.round(n)) },
+            { label: illustrative ? 'Total Supplied (Illustrative)' : 'Total Supplied', value: totalSupplied, fmt: (n: number) => formatUSD(n, true) },
+            { label: illustrative ? 'Total Borrowed (Illustrative)' : 'Total Borrowed', value: totalBorrowed, fmt: (n: number) => formatUSD(n, true) },
           ].map((s, i) => (
             <div key={s.label} className="lc-summary-item" style={{
               paddingRight: 32,
@@ -96,7 +98,7 @@ export default function MarketsPage() {
               borderRight: i < 2 ? '1px solid var(--border-subtle)' : 'none',
             }}>
               <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', marginBottom: 4 }}>
-                {s.value}
+                <CountUp value={s.value} format={s.fmt} />
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-3)' }}>{s.label}</div>
             </div>
@@ -172,15 +174,13 @@ export default function MarketsPage() {
                   <th style={{ ...lcTh, paddingRight: 24 }}>Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody key={`${asset}-${status}-${collateral}-${sortKey}-${current}`}>
                 {rows.map((m, i) => {
                   const st = marketStatus(m.oracleLastUpdate, m.maxStaleness)
                   return (
-                    <motion.tr
+                    <LcRow
                       key={m.slug}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: i * 0.03 }}
+                      index={i}
                       onClick={() => router.push(`/markets/${m.slug}`)}
                       className="lc-row"
                       style={{ cursor: 'pointer' }}
@@ -200,7 +200,7 @@ export default function MarketsPage() {
                       <td style={lcTd}>{formatUSD(m.totalSupplied - m.totalBorrowed, true)}</td>
                       <td style={lcTd}><LcOracle lastUpdate={m.oracleLastUpdate} maxStaleness={m.maxStaleness} /></td>
                       <td style={{ ...lcTd, paddingRight: 24 }}><LcPill tone={st.tone}>{st.label}</LcPill></td>
-                    </motion.tr>
+                    </LcRow>
                   )
                 })}
               </tbody>
@@ -258,10 +258,93 @@ export default function MarketsPage() {
             ? 'All data is illustrative and for the Base Sepolia testnet.'
             : 'Rates and balances are read live from the Base Sepolia testnet.'}
         </LcFootnote>
+
+        {/* What a market is */}
+        <div style={{ marginTop: 56 }}>
+          <LcStoryBand
+            eyebrow="What is a market"
+            title="One pair, one price feed, one set of rules."
+            body={
+              <>
+                <p style={{ marginBottom: 12 }}>
+                  A market brings together one asset people lend out and one asset borrowers put up as collateral. It reads one price feed and follows one interest curve, and none of that can change after it opens.
+                </p>
+                <p>
+                  That is the whole idea behind lending-core. If something goes wrong in one market, like a broken price feed or a sudden crash in a collateral token, it stays inside that market. Your deposits elsewhere are never part of the problem.
+                </p>
+              </>
+            }
+            aside={
+              <div style={{ display: 'grid', gap: 10 }}>
+                {[
+                  { k: 'You lend', v: 'the loan asset, and earn the supply rate' },
+                  { k: 'They borrow', v: 'against collateral, and pay the borrow rate' },
+                  { k: 'The oracle', v: 'prices the collateral so every loan stays covered' },
+                  { k: 'The rules', v: 'are fixed the moment the market is created' },
+                ].map((row, i) => (
+                  <motion.div
+                    key={row.k}
+                    className="lc-dark-inset"
+                    initial={{ opacity: 0, x: 18 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true, amount: 0.4 }}
+                    transition={{ duration: 0.5, delay: 0.15 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+                    style={{ padding: '13px 16px', fontSize: 13.5, color: 'var(--band-muted)', lineHeight: 1.5 }}
+                  >
+                    <span style={{ color: '#FFFFFF', fontWeight: 600 }}>{row.k}</span> {row.v}
+                  </motion.div>
+                ))}
+              </div>
+            }
+          />
+        </div>
+
+        {/* How to pick */}
+        <div style={{ marginTop: 56 }}>
+          <LcSectionHead
+            eyebrow="Choosing well"
+            title="How to pick a market"
+            body="A few things worth checking before you put money in. Each one is shown on the market page."
+          />
+          <Stagger className="lc-pick-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }}>
+            <StaggerItem>
+              <LcHelpCard icon={<ShieldCheck size={18} />} title="Trust the collateral">
+                Only lend into markets whose collateral you would be comfortable holding yourself. If it collapses faster than liquidators can act, lenders share the loss.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<Gauge size={18} />} title="Read the LLTV">
+                The liquidation LTV is how far a loan can stretch before it gets closed. A higher number lets borrowers do more, and leaves lenders a thinner cushion.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<ChartLineUp size={18} />} title="Watch utilization">
+                High utilization means great rates for lenders but less cash ready to withdraw. Above the kink, borrow rates climb quickly to pull it back down.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<Drop size={18} />} title="Check the oracle">
+                A green Fresh dot means the price feed is current. A stale feed pauses the market in practice, so new loans and liquidations wait for a fresh price.
+              </LcHelpCard>
+            </StaggerItem>
+          </Stagger>
+          <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link href="/docs?tab=risk" className="btn btn-secondary" style={{ fontSize: 13, padding: '10px 18px' }}>
+              Read the risk guide <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
       </div>
 
       <style jsx global>{`
+        .lc-row td { transition: background 150ms ease; }
         .lc-row:hover td { background: var(--surface-2); }
+        @media (max-width: 1024px) {
+          .lc-pick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+        }
+        @media (max-width: 560px) {
+          .lc-pick-grid { grid-template-columns: 1fr !important; }
+        }
         @media (max-width: 860px) {
           .lc-summary { flex-wrap: wrap; row-gap: 16px; }
           .lc-summary-item { border-right: none !important; margin-right: 0 !important; padding-right: 24px !important; }

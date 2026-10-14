@@ -1,12 +1,15 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { motion } from 'framer-motion'
-import { ShieldCheck, CaretRight, Info, Lightning } from '@phosphor-icons/react'
+import { AnimatePresence, motion } from 'framer-motion'
+import Link from 'next/link'
+import { ShieldCheck, CaretRight, Info, Lightning, Eye, Coins, Scales, Timer, Gauge } from '@phosphor-icons/react'
 import { TokenPair } from '@/components/ui/TokenLogo'
 import { useData } from '@/providers/provider'
 import type { PositionView, MarketView } from '@/providers/types'
 import { formatUSD, formatPercent, formatNumber, formatTimeAgo } from '@/lib/formatting'
 import { LoadingBlock } from '@/components/ui/States'
+import { CountUp, LcRow, LcStoryBand, LcBandStep, LcHelpCard, LcSectionHead } from '@/components/market/LcStory'
+import { Stagger, StaggerItem } from '@/components/ui/Reveal'
 
 type Row = PositionView & { account: string }
 type HealthFilter = 'all' | 'eligible' | 'watch'
@@ -111,7 +114,9 @@ export default function LiquidationsPage() {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 24 }}>
           <h1 className="page-heading">Liquidations</h1>
-          <p className="page-subtitle">Real time liquidation opportunities across all markets</p>
+          <p className="page-subtitle" style={{ maxWidth: 640 }}>
+            When a loan slips underwater, anyone can step in, repay it and collect the collateral at a discount. Here is every position that needs attention right now.
+          </p>
         </motion.div>
 
         {/* Summary */}
@@ -123,12 +128,14 @@ export default function LiquidationsPage() {
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', padding: 0, marginBottom: 20, overflow: 'hidden' }}
         >
           {[
-            { l: 'Eligible Positions', v: loading ? '...' : String(eligible.length), s: 'Health factor below 1' },
-            { l: 'Total Eligible Debt', v: loading ? '...' : formatUSD(eligibleDebt), s: 'Repayable by liquidators' },
+            { l: 'Eligible Positions', v: eligible.length, f: (n: number) => String(Math.round(n)), s: 'Health factor below 1' },
+            { l: 'Total Eligible Debt', v: eligibleDebt, f: (n: number) => formatUSD(n), s: 'Repayable by liquidators' },
           ].map((c, i) => (
             <div key={c.l} style={{ padding: '18px 24px', borderLeft: i ? '1px solid var(--border-subtle)' : 'none' }}>
               <div style={label}>{c.l}</div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 24, fontWeight: 500, color: 'var(--text-1)', margin: '6px 0 2px' }}>{c.v}</div>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 24, fontWeight: 500, color: 'var(--text-1)', margin: '6px 0 2px' }}>
+                {loading ? '...' : <CountUp value={c.v} format={c.f} />}
+              </div>
               <div style={{ fontSize: 11, color: 'var(--text-4)' }}>{c.s}</div>
             </div>
           ))}
@@ -189,13 +196,13 @@ export default function LiquidationsPage() {
                         <th style={{ paddingTop: 14, paddingRight: 20 }}>Action</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {rows.map(({ pos, out }) => {
+                    <tbody key={`${marketFilter}-${healthFilter}-${sortKey}`}>
+                      {rows.map(({ pos, out }, i) => {
                         const mkt = getMarket(pos.slug)
                         const k = keyOf(pos)
                         const active = selected && keyOf(selected.pos) === k
                         return (
-                          <tr key={k} onClick={() => { setSelectedKey(k); setSimulated(null) }} style={active ? { background: 'var(--accent-dim)' } : undefined}>
+                          <LcRow key={k} index={i} className="lc-liq-row" selected={!!active} onClick={() => { setSelectedKey(k); setSimulated(null) }} style={{ cursor: 'pointer' }}>
                             <td style={{ paddingLeft: 20 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 {mkt && <TokenPair collateral={mkt.collateralSymbol} loan={mkt.loanSymbol} size={22} />}
@@ -215,7 +222,7 @@ export default function LiquidationsPage() {
                                 View <CaretRight size={11} weight="bold" />
                               </button>
                             </td>
-                          </tr>
+                          </LcRow>
                         )
                       })}
                     </tbody>
@@ -224,12 +231,14 @@ export default function LiquidationsPage() {
               </div>
 
               {/* Detail */}
+              <AnimatePresence mode="wait">
               {selected && (
                 <motion.div
                   key={keyOf(selected.pos)}
-                  initial={{ opacity: 0, x: 12 }}
+                  initial={{ opacity: 0, x: 32 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.25 }}
+                  exit={{ opacity: 0, x: -16 }}
+                  transition={{ type: 'spring', stiffness: 260, damping: 28 }}
                   className="card"
                   style={{ padding: 24 }}
                 >
@@ -302,13 +311,17 @@ export default function LiquidationsPage() {
                     <Lightning size={14} weight="bold" /> Simulate Transaction
                   </button>
 
+                  <AnimatePresence>
                   {simulated === keyOf(selected.pos) && selected.out && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
                     <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: selected.out.eligible ? 'var(--positive-dim)' : 'var(--warning-dim)', fontSize: 12, color: selected.out.eligible ? 'var(--positive)' : 'var(--warning)', lineHeight: 1.5 }}>
                       {selected.out.eligible
                         ? `Simulation passes. Repaying ${formatUSD(selected.out.repayable)} would seize ${formatNumber(selected.out.collateralReceived, 4)} ${selectedMarket?.collateralSymbol ?? ''} at the current oracle price.`
                         : 'Simulation reverts. The health factor is still above 1, so this position cannot be liquidated yet.'}
                     </div>
+                    </motion.div>
                   )}
+                  </AnimatePresence>
 
                   <p style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11, color: 'var(--text-4)', marginTop: 14, lineHeight: 1.5 }}>
                     <Info size={13} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -316,6 +329,7 @@ export default function LiquidationsPage() {
                   </p>
                 </motion.div>
               )}
+              </AnimatePresence>
             </div>
 
             {/* History */}
@@ -341,14 +355,14 @@ export default function LiquidationsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {activity.map(liq => (
-                        <tr key={liq.id}>
+                      {activity.map((liq, i) => (
+                        <LcRow key={liq.id} index={i}>
                           <td style={{ paddingLeft: 20, fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)' }}>{formatTimeAgo(liq.timestamp)}</td>
-                          <td style={{ fontSize: 13 }}>{liq.slug}</td>
+                          <td style={{ fontSize: 13 }}>{getMarket(liq.slug) ? `${getMarket(liq.slug)!.collateralSymbol} / ${getMarket(liq.slug)!.loanSymbol}` : liq.slug}</td>
                           <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)' }}>{liq.account}</td>
                           <td style={mono}>{formatUSD(liq.amount)}</td>
                           <td style={{ paddingRight: 20 }}><span className="pill pill-danger">{liq.kind}</span></td>
-                        </tr>
+                        </LcRow>
                       ))}
                     </tbody>
                   </table>
@@ -357,7 +371,65 @@ export default function LiquidationsPage() {
             </motion.div>
           </>
         )}
+
+        {/* Explainer */}
+        <div style={{ marginTop: 64 }}>
+          <LcStoryBand
+            eyebrow="For keepers"
+            title="How liquidations keep markets healthy"
+            body="Lenders only get paid back if every loan stays covered by its collateral. When prices fall and a loan slips underwater, a liquidator closes it before the gap can grow. The bonus is what makes that worth doing, quickly, every time."
+            aside={
+              <div style={{ display: 'grid', gap: 10 }}>
+                <LcBandStep n={1} title="Spot it" body="A position's health factor drops below 1 because its collateral lost value." />
+                <LcBandStep n={2} title="Repay it" body="You repay the borrower's whole debt in the loan asset, in one transaction." />
+                <LcBandStep n={3} title="Collect" body="You receive collateral worth the debt plus the market's liquidation bonus." />
+              </div>
+            }
+          >
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 24 }}>
+              <Link href="/docs?tab=risk" className="btn btn-on-dark" style={{ fontSize: 13, padding: '10px 18px' }}>Read the liquidation guide</Link>
+            </div>
+          </LcStoryBand>
+        </div>
+
+        <div style={{ marginTop: 56 }}>
+          <LcSectionHead eyebrow="Before you liquidate" title="What experienced keepers check" body="Liquidation is first come, first served. These habits help you land the ones that are worth it." />
+          <Stagger className="lc-keeper-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 16 }}>
+            <StaggerItem>
+              <LcHelpCard icon={<Eye size={18} />} title="The price feed">
+                Liquidations use the market&apos;s own oracle. If the feed is stale, the call waits for a fresh price, whatever other venues show.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<Coins size={18} />} title="Your loan asset">
+                You repay the full debt in one go, so have enough of the loan asset ready in your wallet before you start.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<Scales size={18} />} title="The real margin">
+                The bonus is gross. Gas and the cost of selling the collateral come out of it, so small positions may not pay.
+              </LcHelpCard>
+            </StaggerItem>
+            <StaggerItem>
+              <LcHelpCard icon={<Timer size={18} />} title="Speed">
+                Other keepers watch the same positions. A simulation that passes now can revert a block later if someone gets there first.
+              </LcHelpCard>
+            </StaggerItem>
+          </Stagger>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 20, fontSize: 13, color: 'var(--text-3)' }}>
+            <Gauge size={16} style={{ color: 'var(--accent)' }} />
+            Borrowers can avoid all of this by keeping their health factor comfortably above 1.5.
+          </div>
+        </div>
       </div>
+
+      <style jsx global>{`
+        .lc-liq-row td { transition: background 150ms ease; }
+        .lc-liq-row:hover td { background: var(--surface-2); }
+        .lc-liq-row[data-selected='true'] td { background: var(--accent-dim); }
+        @media (max-width: 1024px) { .lc-keeper-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+        @media (max-width: 560px) { .lc-keeper-grid { grid-template-columns: 1fr !important; } }
+      `}</style>
     </div>
   )
 }
