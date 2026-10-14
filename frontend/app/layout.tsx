@@ -1,8 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Providers } from '@/components/layout/Providers'
-import { Navbar } from '@/components/layout/Navbar'
-import { Footer } from '@/components/layout/Footer'
 import '@/styles/globals.css'
 
 const inter = Inter({
@@ -34,9 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${inter.variable} ${mono.variable}`}>
       <body>
         <Providers>
-          <Navbar />
-          <main style={{ paddingTop: 68 }}>{children}</main>
-          <Footer />
+          {children}
         </Providers>
       </body>
     </html>
