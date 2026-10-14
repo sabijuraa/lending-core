@@ -12,7 +12,7 @@ interface Props {
   type?: 'clip' | 'slide' | 'fade'
 }
 
-export function ClipReveal({ children, delay = 0, className, style, as: Tag = 'div', type = 'clip' }: Props) {
+export function ClipReveal({ children, delay = 0, className, style, type = 'clip' }: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-60px' })
 

@@ -25,7 +25,6 @@ export function WireframeSphere({ mouseX = 0, mouseY = 0, simplified = false }: 
     // Generate sphere points using fibonacci sphere
     const numPoints = simplified ? 80 : 180
     const numLines = simplified ? 40 : 120
-    const radius = 1
 
     type Point3D = [number, number, number]
 

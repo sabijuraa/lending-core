@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { CaretDown, CaretUp, Plus, MagnifyingGlass, ArrowRight } from '@phosphor-icons/react'
 import { TokenPair } from '@/components/ui/TokenLogo'

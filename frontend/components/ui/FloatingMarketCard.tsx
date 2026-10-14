@@ -7,7 +7,6 @@ interface FloatingMarketCardProps {
 
 export function FloatingMarketCard({ scale = 1 }: FloatingMarketCardProps) {
   const w = 340 * scale
-  const h = 420 * scale
 
   return (
     <motion.div

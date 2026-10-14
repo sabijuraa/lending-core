@@ -17,7 +17,6 @@ import {
 import { useData } from '@/providers/provider'
 import { FloatingMarketCard } from '@/components/ui/FloatingMarketCard'
 import { TokenPair } from '@/components/ui/TokenLogo'
-import { HealthGauge } from '@/components/charts/HealthGauge'
 import { KinkedRateCurve } from '@/components/charts/KinkedRateCurve'
 import { UtilizationBar } from '@/components/charts/UtilizationBar'
 import type { MarketView, ProtocolStats, PositionView } from '@/providers/types'
@@ -54,7 +53,7 @@ export default function HomePage() {
       <IsolationSection />
       <RateModelSection />
       <SecuritySection />
-      <CTASection connected={isConnected ?? false} />
+      <CTASection />
     </>
   )
 }
@@ -841,7 +840,7 @@ function SecuritySection() {
 
 /* ─── Final CTA ──────────────────────────────────────────── */
 
-function CTASection({ connected }: { connected: boolean }) {
+function CTASection() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-60px' })
 

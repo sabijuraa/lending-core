@@ -1,9 +1,8 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CaretDown, Info, Warning, ShieldCheck } from '@phosphor-icons/react'
+import { CaretDown, Warning, ShieldCheck } from '@phosphor-icons/react'
 import { UtilizationBar } from '@/components/charts/UtilizationBar'
-import { HealthGauge } from '@/components/charts/HealthGauge'
 import { useData } from '@/providers/provider'
 import type { MarketView } from '@/providers/types'
 import { formatUSD, formatPercent } from '@/lib/formatting'
@@ -18,7 +17,7 @@ export default function BorrowPage() {
   useEffect(() => {
     data.getMarkets().then(mkts => {
       setMarkets(mkts)
-      if (mkts.length > 0 && !selectedMarket) setSelectedMarket(mkts[0])
+      if (mkts.length > 0) setSelectedMarket(prev => prev ?? mkts[0])
     })
   }, [data])
   const [tab, setTab] = useState<Tab>('borrow')
@@ -30,20 +29,22 @@ export default function BorrowPage() {
   const userBorrowed = 1500
   const collateralPrice = 3500
 
+  const lltv = selectedMarket?.lltv
+
   const healthFactor = useMemo(() => {
-    if (!selectedMarket) return 999
+    if (lltv === undefined) return 999
     const collateral = parseFloat(collateralAmount) || 0
     const borrow = parseFloat(borrowAmount) || 0
     if (borrow === 0) return 999
     const collateralValue = collateral * collateralPrice
-    return (collateralValue * selectedMarket.lltv) / borrow
-  }, [collateralAmount, borrowAmount, selectedMarket?.lltv, collateralPrice])
+    return (collateralValue * lltv) / borrow
+  }, [collateralAmount, borrowAmount, lltv, collateralPrice])
 
   const maxBorrow = useMemo(() => {
-    if (!selectedMarket) return 0
+    if (lltv === undefined) return 0
     const collateral = parseFloat(collateralAmount) || 0
-    return collateral * collateralPrice * selectedMarket.lltv * 0.95
-  }, [collateralAmount, selectedMarket?.lltv, collateralPrice])
+    return collateral * collateralPrice * lltv * 0.95
+  }, [collateralAmount, lltv, collateralPrice])
 
   if (!selectedMarket) return null
 

@@ -23,7 +23,6 @@ export function ScrambleText({ text, trigger = true, delay = 0, duration = 800, 
 
     timeoutRef.current = setTimeout(() => {
       startTime.current = Date.now()
-      let iteration = 0
 
       intervalRef.current = setInterval(() => {
         const elapsed = Date.now() - startTime.current
@@ -39,7 +38,6 @@ export function ScrambleText({ text, trigger = true, delay = 0, duration = 800, 
           }).join('')
         )
 
-        iteration++
         if (progress >= 1) {
           setDisplay(text)
           clearInterval(intervalRef.current)
