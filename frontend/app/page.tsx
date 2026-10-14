@@ -1,7 +1,7 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion, useScroll, useTransform, type Variants } from 'framer-motion'
 import {
   ArrowRight,
   CurrencyCircleDollar,
@@ -11,17 +11,34 @@ import {
   ShieldCheck,
   FileCode,
   GithubLogo,
+  RocketLaunch,
 } from '@phosphor-icons/react'
 import { useData } from '@/providers/provider'
 import { TokenLogo } from '@/components/ui/TokenLogo'
+import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
 import { HeroVisual } from '@/components/home/HeroVisual'
 import { WireGlobe } from '@/components/home/WireGlobe'
+import { CountUp } from '@/components/home/CountUp'
+import { ActionCards } from '@/components/home/ActionCards'
+import { IsolationStory } from '@/components/home/IsolationStory'
+import { PositionShowcase } from '@/components/home/PositionShowcase'
+import { Personas } from '@/components/home/Personas'
+import { Faq } from '@/components/home/Faq'
+import { CtaBand } from '@/components/layout/CtaBand'
 import type { MarketView, ProtocolStats } from '@/providers/types'
 import { formatUSD, formatPercent, getOracleStatus } from '@/lib/formatting'
 import s from '@/components/home/home.module.css'
 
 const REPO = 'https://github.com/sabijuraa/lending-core'
 const ease = [0.16, 1, 0.3, 1] as const
+const usdCompact = (n: number) => formatUSD(n, true)
+const whole = (n: number) => String(Math.round(n))
+
+const heroList: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.1, delayChildren: 0.05 } } }
+const heroItem: Variants = {
+  hidden: { opacity: 0, y: 22 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease } },
+}
 
 export default function HomePage() {
   const data = useData()
@@ -38,9 +55,15 @@ export default function HomePage() {
   return (
     <>
       <Hero stats={stats} markets={markets} note={note} />
+      <ActionCards supplySlug={markets[0]?.slug ?? 'weth'} />
       <FeaturedMarkets markets={markets} />
       <HowLendingWorks />
+      <IsolationStory />
+      <PositionShowcase />
+      <Personas />
       <SecurityStrip />
+      <Faq />
+      <CtaBand />
     </>
   )
 }
@@ -54,46 +77,48 @@ function Hero({ stats, markets, note }: { stats: ProtocolStats | null; markets: 
     <section className={s.hero}>
       <div className="section-container">
         <div className={s.heroGrid}>
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease }}
-          >
-            <p className={s.eyebrow}>Isolated lending on Base</p>
-            <h1 className={s.headline}>Every market has its own risk.</h1>
-            <p className={s.sub}>
-              Each market pairs one loan asset with one collateral asset, its own oracle, and its own interest rate curve.
-            </p>
-            <div className={s.ctaRow}>
-              <Link href="/markets" className="btn btn-primary btn-lg">
+          <motion.div variants={heroList} initial="hidden" animate="show">
+            <motion.p variants={heroItem} className={s.eyebrow}>Isolated lending on Base</motion.p>
+            <motion.h1 variants={heroItem} className={s.headline}>Every market has its own risk.</motion.h1>
+            <motion.p variants={heroItem} className={s.sub}>
+              Lend and borrow in markets that stand on their own. Each one pairs a single loan asset with a single collateral, its own price feed and its own rate, so trouble in one never spills into yours.
+            </motion.p>
+            <motion.div variants={heroItem} className={s.ctaRow}>
+              <Link href="/dashboard" className="btn btn-primary btn-lg">
+                <RocketLaunch size={16} weight="bold" />
+                Launch app
+              </Link>
+              <Link href="/markets" className="btn btn-ghost btn-lg">
                 Explore markets
                 <ArrowRight size={15} weight="bold" />
               </Link>
-              <Link href="/how-it-works" className="btn btn-ghost btn-lg">
-                Understand market isolation
+            </motion.div>
+            <motion.div variants={heroItem}>
+              <Link href="/how-it-works" className={s.heroLink}>
+                Understand market isolation <ArrowRight size={13} />
               </Link>
-            </div>
+            </motion.div>
           </motion.div>
 
           <div className={s.visual} aria-hidden="true">
             <HeroVisual pairs={pairs} />
-            <p className={s.caption}>
+            <motion.p className={s.caption} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 0.6 }}>
               Isolated markets.
               <br />
               Independent risk.
-            </p>
+            </motion.p>
           </div>
         </div>
 
         <motion.div
           className={s.stats}
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
+          transition={{ duration: 0.7, delay: 0.45, ease }}
         >
-          <Stat icon={<CurrencyCircleDollar size={16} />} label="Total Supplied" value={stats ? formatUSD(stats.totalSupplied, true) : '...'} note={note} />
-          <Stat icon={<HandCoins size={16} />} label="Total Borrowed" value={stats ? formatUSD(stats.totalBorrowed, true) : '...'} note={note} />
-          <Stat icon={<SquaresFour size={16} />} label="Active Markets" value={stats ? String(stats.marketsLive) : '...'} note={note} />
+          <Stat icon={<CurrencyCircleDollar size={16} />} label="Total Supplied" value={stats ? <CountUp value={stats.totalSupplied} format={usdCompact} /> : '...'} note={note} />
+          <Stat icon={<HandCoins size={16} />} label="Total Borrowed" value={stats ? <CountUp value={stats.totalBorrowed} format={usdCompact} /> : '...'} note={note} />
+          <Stat icon={<SquaresFour size={16} />} label="Active Markets" value={stats ? <CountUp value={stats.marketsLive} format={whole} /> : '...'} note={note} />
           <Stat icon={<Pulse size={16} />} label="Protocol Status" value="Testnet" note="Base Sepolia" />
         </motion.div>
       </div>
@@ -101,7 +126,7 @@ function Hero({ stats, markets, note }: { stats: ProtocolStats | null; markets: 
   )
 }
 
-function Stat({ icon, label, value, note }: { icon: React.ReactNode; label: string; value: string; note: string }) {
+function Stat({ icon, label, value, note }: { icon: React.ReactNode; label: string; value: React.ReactNode; note: string }) {
   return (
     <div className={s.stat}>
       <div className={s.statIcon}>{icon}</div>
@@ -123,16 +148,16 @@ function FeaturedMarkets({ markets }: { markets: MarketView[] }) {
   const top = markets.slice(0, 4)
 
   return (
-    <section style={{ padding: '48px 0 64px' }}>
+    <section style={{ padding: '24px 0 96px' }}>
       <div className="section-container">
-        <div className={s.sectionHead}>
+        <Reveal className={s.sectionHead}>
           <h2 className={s.sectionTitle}>Featured markets</h2>
           <Link href="/markets" className={s.textLink}>
             View all markets <ArrowRight size={13} />
           </Link>
-        </div>
+        </Reveal>
 
-        <div className={s.tableCard}>
+        <Reveal delay={0.08} className={s.tableCard}>
           <table className={s.table}>
             <thead>
               <tr>
@@ -150,9 +175,10 @@ function FeaturedMarkets({ markets }: { markets: MarketView[] }) {
                 return (
                   <motion.tr
                     key={m.slug}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                    initial={{ opacity: 0, x: -12 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.45, delay: 0.15 + i * 0.07, ease }}
                   >
                     <td>
                       <Link href={`/markets/${m.slug}`} className={s.marketCell}>
@@ -178,7 +204,7 @@ function FeaturedMarkets({ markets }: { markets: MarketView[] }) {
               })}
             </tbody>
           </table>
-        </div>
+        </Reveal>
       </div>
     </section>
   )
@@ -189,26 +215,50 @@ function FeaturedMarkets({ markets }: { markets: MarketView[] }) {
 const steps = ['Deposit collateral', 'Borrow', 'Monitor health factor', 'Repay or liquidate']
 
 function HowLendingWorks() {
-  return (
-    <section className={s.band}>
-      <WireGlobe className={s.bandGlobe} />
-      <div className="section-container">
-        <h2 className={s.bandTitle}>How lending works</h2>
-        <p className={s.bandSub}>
-          From collateral to liquidation, understand the mechanics and the risk behind every position.
-        </p>
-        <Link href="/how-it-works" className={s.bandLink}>
-          <span>Learn more</span> <ArrowRight size={13} />
-        </Link>
+  const ref = useRef<HTMLElement>(null)
+  const reduce = useReducedMotion()
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
+  const globeY = useTransform(scrollYProgress, [0, 1], [60, -60])
+  const globeRotate = useTransform(scrollYProgress, [0, 1], [-8, 8])
+  const [active, setActive] = useState(0)
 
-        <div className={s.steps}>
+  useEffect(() => {
+    if (reduce) return
+    const id = setInterval(() => setActive(a => (a + 1) % steps.length), 2200)
+    return () => clearInterval(id)
+  }, [reduce])
+
+  return (
+    <section ref={ref} className={s.band}>
+      <motion.div className={s.bandGlobe} style={reduce ? undefined : { y: globeY, rotate: globeRotate }}>
+        <WireGlobe className={s.fill} />
+      </motion.div>
+      <div className="section-container">
+        <Reveal>
+          <p className={s.bandEyebrow}>How lending works</p>
+          <h2 className={s.bandTitle}>From deposit to repayment in four steps.</h2>
+          <p className={s.bandSub}>
+            Put collateral down, borrow what you need, keep an eye on one number and close out when you are ready. That is the whole loop.
+          </p>
+          <Link href="/how-it-works" className={s.bandLink}>
+            <span>Learn more</span> <ArrowRight size={13} />
+          </Link>
+        </Reveal>
+
+        <Stagger className={s.steps}>
           {steps.map((label, i) => (
-            <div key={label} className={s.step}>
-              <span className={`${s.stepNum} ${i === 1 ? s.stepNumActive : ''}`}>{i + 1}</span>
-              {label}
-            </div>
+            <StaggerItem key={label} className={s.step}>
+              <motion.span
+                className={`${s.stepNum} ${i === active ? s.stepNumActive : ''}`}
+                animate={i === active ? { scale: [1, 1.15, 1] } : { scale: 1 }}
+                transition={{ duration: 0.5 }}
+              >
+                {i + 1}
+              </motion.span>
+              <span style={{ opacity: i === active ? 1 : 0.75, transition: 'opacity 0.3s ease' }}>{label}</span>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   )
@@ -220,8 +270,10 @@ function SecurityStrip() {
   return (
     <section className={s.security}>
       <div className="section-container">
-        <h2 className={s.sectionTitle}>Security, transparency and open source</h2>
-        <div className={s.securityCard}>
+        <Reveal>
+          <h2 className={s.sectionTitle}>Security, transparency and open source</h2>
+        </Reveal>
+        <Reveal delay={0.08} className={s.securityCard}>
           <Link href="/security" className={s.secItem}>
             <ShieldCheck size={24} weight="duotone" className={s.secIcon} />
             <div>
@@ -248,7 +300,7 @@ function SecurityStrip() {
               Explore markets <ArrowRight size={13} weight="bold" />
             </Link>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   )

@@ -1,5 +1,5 @@
 'use client'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Vault } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
 
@@ -7,7 +7,7 @@ type Pair = { collateral: string; loan: string }
 
 const tilt = 'perspective(1400px) rotateX(18deg) rotateY(-30deg) rotateZ(-6deg)'
 
-function MarketSlab({ pair, top, left, z, delay }: { pair: Pair; top: number; left: number; z: number; delay: number }) {
+function MarketSlab({ pair, top, left, z, delay, bob }: { pair: Pair; top: number; left: number; z: number; delay: number; bob: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -15,6 +15,11 @@ function MarketSlab({ pair, top, left, z, delay }: { pair: Pair; top: number; le
       transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
       style={{ position: 'absolute', top, left, zIndex: z }}
     >
+      <motion.div
+        animate={bob ? { y: [0, -8, 0] } : undefined}
+        transition={{ duration: 4.5 + z * 0.6, repeat: Infinity, ease: 'easeInOut', delay: delay + 0.6 }}
+        whileHover={{ y: -12, transition: { duration: 0.25 } }}
+      >
       <div
         style={{
           width: 240,
@@ -61,12 +66,14 @@ function MarketSlab({ pair, top, left, z, delay }: { pair: Pair; top: number; le
           </span>
         </div>
       </div>
+      </motion.div>
     </motion.div>
   )
 }
 
 export function HeroVisual({ pairs }: { pairs: Pair[] }) {
   const shown = pairs.slice(0, 3)
+  const bob = !useReducedMotion()
   return (
     <>
       {/* vault block behind the market slabs */}
@@ -119,6 +126,7 @@ export function HeroVisual({ pairs }: { pairs: Pair[] }) {
           left={40 + i * 46}
           z={i + 1}
           delay={0.15 + i * 0.1}
+          bob={bob}
         />
       ))}
     </>
