@@ -16,6 +16,12 @@ const NAV_LINKS = [
   { href: '/docs', label: 'Learn & Docs' },
 ]
 
+function isActive(pathname: string, href: string) {
+  if (href === '/') return pathname === '/'
+  if (href === '/docs') return pathname.startsWith('/docs') || pathname === '/how-it-works'
+  return pathname === href || pathname.startsWith(href + '/')
+}
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -31,17 +37,14 @@ export function Navbar() {
   }, [])
 
   useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
+    document.body.style.overflow = mobileOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
 
   return (
     <>
       <nav
+        className="lc-nav"
         style={{
           position: 'fixed',
           top: 0,
@@ -52,141 +55,72 @@ export function Navbar() {
           display: 'flex',
           alignItems: 'center',
           padding: '0 48px',
-          transition: 'background 300ms ease, border-color 300ms ease, backdrop-filter 300ms ease',
-          background: scrolled ? 'rgba(244,243,237,0.88)' : 'transparent',
-          borderBottom: scrolled ? '1px solid var(--border-subtle)' : '1px solid transparent',
+          transition: 'background 300ms ease, border-color 300ms ease',
+          background: scrolled ? 'rgba(245,244,238,0.9)' : 'var(--canvas)',
+          borderBottom: '1px solid var(--border-subtle)',
           backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
           WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
         }}
       >
-        {/* Logo */}
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <polygon
-              points="12,1 22,6.5 22,17.5 12,23 2,17.5 2,6.5"
-              stroke="var(--accent)"
-              strokeWidth="1.2"
-              fill="none"
-            />
-            <polygon
-              points="12,5 18,8.5 18,15.5 12,19 6,15.5 6,8.5"
-              stroke="var(--accent)"
-              strokeWidth="0.6"
-              fill="rgba(23,77,64,0.06)"
-              transform="rotate(15 12 12)"
-            />
-          </svg>
-          <span style={{
-            fontFamily: 'var(--font-sans)',
-            fontSize: 15,
+        <Link
+          href="/"
+          style={{
+            fontSize: 17,
             fontWeight: 600,
-            color: 'var(--text-1)',
-            letterSpacing: '-0.02em'
-          }}>
-            lending-core
-          </span>
+            color: 'var(--primary)',
+            letterSpacing: '-0.02em',
+            textDecoration: 'none',
+            flexShrink: 0,
+          }}
+        >
+          lending-core
         </Link>
 
-        {/* Center links */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 28,
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)'
-          }}
-          className="nav-links"
-        >
-          {NAV_LINKS.map((link) => (
-            <NavLink
-              key={link.href}
-              href={link.href}
-              label={link.label}
-              active={
-                link.href === '/'
-                  ? pathname === '/'
-                  : pathname === link.href || pathname.startsWith(link.href + '/')
-              }
-            />
-          ))}
+        <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: 32, marginLeft: 56, height: '100%' }}>
+          {NAV_LINKS.map((link) => {
+            const active = isActive(pathname, link.href)
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="lc-navlink"
+                data-active={active}
+                aria-current={active ? 'page' : undefined}
+              >
+                {link.label}
+              </Link>
+            )
+          })}
         </div>
 
-        {/* Right side - Connect button only */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span className="lc-network hide-mobile">
+            <span className="lc-dot" style={{ color: 'var(--positive)' }} />
+            Base Sepolia
+          </span>
+
           {isConnected && address ? (
-            <button
-              onClick={() => disconnect()}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 14px',
-                fontSize: 13,
-                fontWeight: 500,
-                color: 'var(--text-1)',
-                background: 'var(--surface)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--r-sm)',
-                cursor: 'pointer',
-                transition: 'border-color 150ms ease',
-              }}
-            >
-              <span style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: 'var(--positive)',
-                animation: 'pulse-dot 2s ease-in-out infinite'
-              }} />
+            <button onClick={() => disconnect()} className="btn btn-secondary lc-nav-btn" title="Disconnect">
+              <span className="lc-dot" style={{ color: 'var(--positive)' }} />
               {truncateAddress(address)}
             </button>
           ) : (
-            <button
-              onClick={() => connect({ connector: injected() })}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 16px',
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#FFFFFF',
-                background: 'var(--accent)',
-                border: '1px solid var(--accent)',
-                borderRadius: 'var(--r-sm)',
-                cursor: 'pointer',
-                transition: 'background 150ms ease',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--accent-hover)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--accent)')}
-            >
-              <Wallet size={14} weight="bold" />
-              Connect
+            <button onClick={() => connect({ connector: injected() })} className="btn btn-primary lc-nav-btn">
+              Connect Wallet
             </button>
           )}
 
-          {/* Mobile menu toggle */}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            style={{
-              display: 'none',
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-2)',
-              cursor: 'pointer',
-              padding: 4
-            }}
             className="mobile-btn"
             aria-label="Menu"
+            style={{ display: 'none', background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer', padding: 4 }}
           >
             {mobileOpen ? <X size={22} /> : <List size={22} />}
           </button>
         </div>
       </nav>
 
-      {/* Mobile menu overlay */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -198,13 +132,13 @@ export function Navbar() {
               position: 'fixed',
               inset: 0,
               zIndex: 99,
-              background: 'rgba(244,243,237,0.97)',
+              background: 'rgba(245,244,238,0.98)',
               backdropFilter: 'blur(24px)',
               display: 'flex',
               flexDirection: 'column',
-              paddingTop: 100,
-              paddingLeft: 32,
-              paddingRight: 32,
+              paddingTop: 92,
+              paddingLeft: 24,
+              paddingRight: 24,
             }}
           >
             {NAV_LINKS.map((link, i) => (
@@ -219,11 +153,10 @@ export function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   style={{
                     display: 'block',
-                    padding: '20px 0',
-                    fontSize: 26,
+                    padding: '18px 0',
+                    fontSize: 24,
                     fontWeight: 600,
-                    fontFamily: 'var(--font-sans)',
-                    color: pathname === link.href ? 'var(--accent)' : 'var(--text-1)',
+                    color: isActive(pathname, link.href) ? 'var(--positive)' : 'var(--text-1)',
                     textDecoration: 'none',
                     borderBottom: '1px solid var(--border-subtle)',
                     letterSpacing: '-0.02em',
@@ -238,8 +171,12 @@ export function Navbar() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
-              style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 10 }}
+              style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 12 }}
             >
+              <span className="lc-network" style={{ alignSelf: 'flex-start' }}>
+                <span className="lc-dot" style={{ color: 'var(--positive)' }} />
+                Base Sepolia
+              </span>
               {isConnected && address ? (
                 <button
                   onClick={() => { disconnect(); setMobileOpen(false) }}
@@ -263,47 +200,57 @@ export function Navbar() {
         )}
       </AnimatePresence>
 
-      <style jsx>{`
-        @media (max-width: 768px) {
+      <style jsx global>{`
+        .lc-navlink {
+          position: relative;
+          display: flex;
+          align-items: center;
+          height: 100%;
+          font-size: 14px;
+          font-weight: 500;
+          color: var(--text-2);
+          text-decoration: none;
+          transition: color 150ms ease;
+        }
+        .lc-navlink:hover { color: var(--text-1); }
+        .lc-navlink[data-active='true'] { color: var(--primary); font-weight: 600; }
+        .lc-navlink[data-active='true']::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 14px;
+          height: 2px;
+          border-radius: 1px;
+          background: var(--positive);
+        }
+        .lc-network {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 14px;
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--text-2);
+          background: var(--surface);
+          border: 1px solid var(--border-default);
+          border-radius: 999px;
+          white-space: nowrap;
+        }
+        .lc-nav-btn { padding: 9px 18px; font-size: 13px; }
+        @media (max-width: 1024px) {
+          .lc-nav { padding: 0 24px !important; }
+          .nav-links { gap: 20px !important; margin-left: 32px !important; }
+        }
+        @media (max-width: 860px) {
           .nav-links { display: none !important; }
           .mobile-btn { display: block !important; }
         }
+        @media (max-width: 480px) {
+          .lc-nav { padding: 0 16px !important; }
+          .lc-nav-btn { padding: 8px 12px; font-size: 12px; }
+        }
       `}</style>
     </>
-  )
-}
-
-function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
-  const [hovered, setHovered] = useState(false)
-
-  return (
-    <Link
-      href={href}
-      style={{
-        fontSize: 14,
-        fontWeight: active ? 600 : 500,
-        color: active ? 'var(--accent)' : hovered ? 'var(--text-1)' : 'var(--text-2)',
-        textDecoration: 'none',
-        transition: 'color 150ms ease',
-        position: 'relative',
-        paddingBottom: 2,
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      {label}
-      {active && (
-        <span style={{
-          position: 'absolute',
-          bottom: -2,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 16,
-          height: 2,
-          borderRadius: 1,
-          background: 'var(--accent)',
-        }} />
-      )}
-    </Link>
   )
 }
