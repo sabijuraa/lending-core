@@ -28,12 +28,3 @@ export function EmptyBlock({ title, body, href, cta }: { title: string; body: st
     </div>
   )
 }
-
-export function DemoNotice() {
-  if (process.env.NEXT_PUBLIC_DATA_SOURCE === 'chain') return null
-  return (
-    <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8 }}>
-      Demo data. Figures are illustrative and reset when you reload.
-    </p>
-  )
-}

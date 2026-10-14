@@ -1,20 +1,18 @@
-.page { padding: 40px 0 96px; }
+.page { padding: 28px 32px 56px; max-width: 1280px; min-width: 0; }
 .split { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 24px; align-items: start; }
 .splitWide { grid-template-columns: minmax(0, 1fr) 420px; }
 .hfCard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: center; }
-.sticky { position: sticky; top: 92px; }
+.sticky { position: sticky; top: 88px; }
 .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .summary { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 24px; align-items: center; }
 .action {
-  display: flex; flex-direction: column; gap: 14px; padding: 20px;
+  display: flex; flex-direction: column; gap: 6px; padding: 20px; height: 100%;
   background: var(--surface); border: 1px solid var(--border-default); border-radius: var(--r-lg);
   color: var(--text-1); text-decoration: none;
   transition: transform 200ms var(--ease-expo), box-shadow 200ms ease, border-color 200ms ease;
 }
 .action:hover { transform: translateY(-3px); border-color: var(--accent-border); box-shadow: 0 12px 28px -18px rgba(16,43,39,0.35); }
-.action:hover .actionArrow { transform: translateX(3px); color: var(--accent); }
-.actionArrow { transition: transform 200ms var(--ease-expo), color 200ms ease; color: var(--text-3); }
 .marketRow {
   display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 12px; align-items: center;
   width: 100%; padding: 16px 18px; text-align: left; cursor: pointer; font: inherit;
@@ -25,19 +23,24 @@
 .marketRowActive { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
 .posRow { display: grid; grid-template-columns: minmax(0, 1.3fr) repeat(4, minmax(0, 1fr)) auto; gap: 12px; align-items: center; }
 .listRow { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)) auto; gap: 12px; align-items: center; }
+.manage { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.activityRow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 14px 20px; }
 .hideSm {}
 @media (max-width: 1024px) {
   .split, .splitWide { grid-template-columns: minmax(0, 1fr); }
   .sticky { position: static; }
   .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .manage { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 760px) {
+  .page { padding: 20px 16px 40px; }
   .summary { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .grid3 { grid-template-columns: 1fr; }
   .hfCard { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .posRow { grid-template-columns: minmax(0, 1fr) auto; }
   .listRow { grid-template-columns: minmax(0, 1fr) auto; }
   .marketRow { grid-template-columns: minmax(0, 1fr) auto; }
+  .activityRow { grid-template-columns: minmax(0, 1fr) auto auto; padding: 12px 16px; }
   .hideSm { display: none !important; }
 }
 @media (max-width: 480px) {

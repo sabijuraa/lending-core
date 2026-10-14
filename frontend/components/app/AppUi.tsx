@@ -2,14 +2,16 @@
 import type { CSSProperties, ReactNode } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { useReadContract } from 'wagmi'
+import { useAccount, useConnect, useReadContract } from 'wagmi'
+import { injected } from 'wagmi/connectors'
 import { formatUnits, type Address } from 'viem'
-import { ArrowLeft } from '@phosphor-icons/react'
 import { useData } from '@/providers/provider'
 import { ADDRESSES, isDeployed } from '@/lib/addresses'
 import TestTokenAbi from '@/lib/abi/TestToken.json'
 import { getHealthStatus } from '@/lib/formatting'
 import { Reveal } from '@/components/ui/Reveal'
+import { useMounted } from '@/lib/use-mounted'
+
 
 /** Shared building blocks for the dashboard, earn, borrow and supply flows. */
 
@@ -21,7 +23,14 @@ export const panel: CSSProperties = {
 
 const erc20 = TestTokenAbi as never
 
-/** Wallet USDC balance on Base Sepolia, null when it cannot be read (demo mode or no wallet). */
+/** The connected wallet address, or null when no wallet is connected. */
+export function useWallet() {
+  const { address } = useAccount()
+  const mounted = useMounted()
+  return mounted ? (address ?? null) : null
+}
+
+/** Wallet USDC balance read from the token contract, null when it cannot be read. */
 export function useWalletUsdc(account: string | null) {
   const data = useData()
   const read = useReadContract({
@@ -46,7 +55,7 @@ export function AppHeader({ eyebrow, title, subtitle, back, right }: {
     <Reveal style={{ marginBottom: 28 }}>
       {back && (
         <Link href={back.href} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-3)', marginBottom: 18, textDecoration: 'none' }}>
-          <ArrowLeft size={13} /> {back.label}
+          Back to {back.label}
         </Link>
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
@@ -108,7 +117,7 @@ export function AmountField({ label, symbol, value, onChange, max, maxLabel, id 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
         <label htmlFor={id} className="lc-label">{label}</label>
         <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-          {maxLabel} {max === null ? 'not available' : max.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+          {max === null ? '' : `${maxLabel} ${max.toLocaleString(undefined, { maximumFractionDigits: 4 })}`}
         </span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px 4px 14px', border: '1px solid var(--border-default)', borderRadius: 10, background: 'var(--surface)' }}
@@ -116,20 +125,22 @@ export function AmountField({ label, symbol, value, onChange, max, maxLabel, id 
         <input id={id} inputMode="decimal" autoComplete="off" value={value} placeholder="0.00"
           onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
           style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontSize: 24, fontWeight: 500, color: 'var(--text-1)', fontVariantNumeric: 'tabular-nums', padding: '8px 0', fontFamily: 'inherit' }} />
-        <button type="button" onClick={() => fill(100)} disabled={disabled}
-          style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', color: disabled ? 'var(--text-4)' : 'var(--accent)', background: 'transparent', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', padding: '4px 6px', fontFamily: 'inherit' }}>
-          MAX
-        </button>
+        {!disabled && (
+          <button type="button" onClick={() => fill(100)}
+            style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.04em', color: 'var(--accent)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 6px', fontFamily: 'inherit' }}>
+            MAX
+          </button>
+        )}
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 8 }}>{symbol}</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+      {!disabled && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
         {[25, 50, 75, 100].map((p) => (
           <button key={p} type="button" onClick={() => fill(p)} disabled={disabled} className="lc-chip"
             style={{ padding: '6px 0', fontSize: 12, fontWeight: 500, color: disabled ? 'var(--text-4)' : 'var(--text-2)', background: 'var(--surface)', border: '1px solid var(--border-default)', borderRadius: 7, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', transition: 'border-color 150ms ease, color 150ms ease' }}>
             {p}%
           </button>
         ))}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -192,13 +203,21 @@ export function FactsCard({ title, rows }: { title: string; rows: { label: strin
   )
 }
 
-export function DemoBanner() {
-  const data = useData()
-  if (data.source === 'chain') return null
+/** Plain connect button for any place a flow needs a wallet first. */
+export function ConnectWalletButton({ label = 'Connect wallet to continue', onDark = false }: { label?: string; onDark?: boolean }) {
+  const { connect, isPending, error } = useConnect()
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', marginBottom: 24, fontSize: 13, color: 'var(--text-2)', background: 'var(--accent-tint)', border: '1px solid var(--accent-border)', borderRadius: 10 }}>
-      <span className="lc-dot" style={{ color: 'var(--positive)' }} />
-      You are using a demo account. Balances are illustrative and reset when you reload, so feel free to try every flow.
+    <div style={{ display: 'grid', gap: 8 }}>
+      <button type="button" className="btn btn-primary btn-lg" disabled={isPending}
+        style={{ width: '100%', justifyContent: 'center', ...(onDark ? { background: '#fff', color: 'var(--primary)', borderColor: '#fff' } : {}) }}
+        onClick={() => connect({ connector: injected() })}>
+        {isPending ? 'Check your wallet' : label}
+      </button>
+      {error && (
+        <span role="alert" style={{ fontSize: 13, color: onDark ? '#F5B7B1' : 'var(--danger)' }}>
+          {/provider not found|no provider/i.test(error.message) ? 'No browser wallet was found. Install a wallet extension such as MetaMask and try again.' : 'The wallet did not connect. Please try again.'}
+        </span>
+      )}
     </div>
   )
 }
