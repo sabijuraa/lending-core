@@ -1,7 +1,8 @@
 'use client'
 import { useState, useSyncExternalStore } from 'react'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { Stagger, StaggerItem } from '@/components/ui/Reveal'
 import {
   Warning,
   CheckCircle,
@@ -25,18 +26,18 @@ const TABS: { id: Tab; label: string; hash: string }[] = [
 ]
 
 const checks = [
-  ['Unit and fuzz tests', 'Every external function of LendingCore, the rate model, the oracle adapter and the math libraries, with fuzzed amounts and time jumps.'],
-  ['Invariant tests', 'A handler drives supply, borrow, repay, withdraw, liquidation, price crashes and time warps while solvency, collateral accounting and share consistency are checked after every call.'],
-  ['Deploy rehearsal', 'The Base Sepolia deploy script runs inside the test suite and a full supply, borrow and liquidation flow is driven through what it deploys.'],
-  ['Threat model', 'THREAT_MODEL.md lists who is trusted, which attacks are defended against and which are out of scope.'],
+  ['Unit and fuzz tests', 'Every action you can take is tested, including with thousands of random amounts and jumps forward in time.'],
+  ['Invariant tests', 'Random sequences of deposits, loans, repayments, crashes and liquidations run over and over, and after every step we check that the market can still pay everyone back.'],
+  ['Deploy rehearsal', 'The exact deployment used for the testnet is rehearsed in the tests, then a full lend, borrow and liquidate journey is run against it.'],
+  ['Threat model', 'A public document lists who has to be trusted, which attacks are defended against and which risks are accepted.'],
 ]
 
 const model = [
-  ['No admin', 'Markets are immutable. No key can change parameters, pause a market or move funds.'],
-  ['Untrusted oracles', 'Prices must be above zero and newer than the market staleness limit, or the call reverts.'],
-  ['Inflation resistant shares', 'Virtual shares and assets on every conversion stop the empty market donation attack.'],
-  ['Rounding favours the protocol', 'Each conversion rounds so the market keeps the remainder.'],
-  ['Bad debt is realized', 'If a liquidation leaves debt without collateral, it is written off against that market at once.'],
+  ['No admin', 'Markets cannot be changed once created. No key can alter the rules, pause a market or move your funds.'],
+  ['Price feeds are checked, not trusted', 'A price must make sense and be recent enough, or the market refuses to act on it.'],
+  ['Protected from share tricks', 'The way deposits are counted blocks a known attack where someone manipulates a brand new, empty market.'],
+  ['Rounding never works against the market', 'Every calculation rounds so the market keeps the tiny remainder, which means it can never owe more than it holds.'],
+  ['Losses are recorded honestly', 'If a crash leaves a loan underwater, the loss is written off inside that market straight away, never hidden.'],
 ]
 
 const knownRisks = [
@@ -67,6 +68,7 @@ const cardTitle: React.CSSProperties = { fontSize: 15, fontWeight: 600, color: '
 export function SecurityTabs() {
   const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => '')
   const [chosen, setChosen] = useState<Tab | null>(null)
+  const reduce = useReducedMotion()
   const tab: Tab = chosen ?? TABS.find(t => t.hash === hash)?.id ?? 'audit'
 
   const select = (t: Tab) => {
@@ -106,11 +108,24 @@ export function SecurityTabs() {
         ))}
       </div>
 
-      <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-        {tab === 'audit' && <AuditStatus onDisclosures={() => select('disclosures')} />}
-        {tab === 'methodology' && <Methodology />}
-        {tab === 'disclosures' && <Disclosures />}
-      </motion.div>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={tab}
+          initial={reduce ? false : { opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, x: -16 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {tab === 'audit' && <AuditStatus onDisclosures={() => select('disclosures')} />}
+          {tab === 'methodology' && <Methodology />}
+          {tab === 'disclosures' && <Disclosures />}
+        </motion.div>
+      </AnimatePresence>
+      <style>{`
+        .sec-card { transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease; }
+        .sec-card:hover { border-color: var(--accent-border); box-shadow: 0 10px 28px rgba(16,43,39,0.08); transform: translateY(-3px); }
+        @media (prefers-reduced-motion: reduce) { .sec-card:hover { transform: none; } }
+      `}</style>
     </div>
   )
 }
@@ -139,7 +154,7 @@ function AuditStatus({ onDisclosures }: { onDisclosures: () => void }) {
               <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 2 }}>Audit Status</div>
               <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-1)', marginBottom: 8 }}>Not yet audited</div>
               <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>
-                The protocol has not been externally audited. We recommend reviewing the code, deployment details and disclosures before interacting.
+                No outside firm has reviewed the contracts yet. They are thoroughly tested in house, but please read the disclosures below and only use test funds for now.
               </p>
             </div>
           </div>
@@ -176,23 +191,26 @@ function AuditStatus({ onDisclosures }: { onDisclosures: () => void }) {
 
       {/* What is tested */}
       <h2 style={{ ...cardTitle, fontSize: 17, marginBottom: 14 }}>What is tested</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 36 }}>
+      <Stagger style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14, marginBottom: 36 }}>
         {checks.map(([t, d]) => (
-          <div key={t} className="card" style={{ padding: 18 }}>
+          <StaggerItem key={t}>
+          <div className="card sec-card" style={{ padding: 18, height: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <CheckCircle size={16} weight="fill" style={{ color: 'var(--positive)' }} />
               <h3 style={{ fontSize: 14, fontWeight: 600 }}>{t}</h3>
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>{d}</p>
           </div>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
 
       {/* Known risks */}
       <h2 style={{ ...cardTitle, fontSize: 17, marginBottom: 14 }}>Known Risks</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 14, marginBottom: 20 }}>
+      <Stagger style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 14, marginBottom: 20 }}>
         {knownRisks.map(r => (
-          <div key={r.t} className="card" style={{ padding: 18, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <StaggerItem key={r.t}>
+          <div className="card sec-card" style={{ padding: 18, display: 'flex', gap: 14, alignItems: 'flex-start', height: '100%' }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: r.bg, display: 'grid', placeItems: 'center', flexShrink: 0 }}>
               <r.icon size={17} weight="duotone" style={{ color: r.color }} />
             </div>
@@ -201,8 +219,9 @@ function AuditStatus({ onDisclosures }: { onDisclosures: () => void }) {
               <p style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.55 }}>{r.d}</p>
             </div>
           </div>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
       <button
         onClick={onDisclosures}
         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
@@ -217,16 +236,18 @@ function Methodology() {
   return (
     <>
       <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.7, maxWidth: 720, marginBottom: 24 }}>
-        Each market is a fixed pair of loan asset and collateral with one oracle, one rate model, one LLTV and one liquidation bonus. Risk is contained to the market that chose those parameters.
+        Every market is a fixed recipe of one asset to borrow, one asset to deposit, one price feed and one set of rules. Whatever risk a market carries stays inside it. These are the protections that apply everywhere.
       </p>
-      <div style={{ display: 'grid', gap: 12, marginBottom: 36 }}>
+      <Stagger style={{ display: 'grid', gap: 12, marginBottom: 36 }}>
         {model.map(([t, d]) => (
-          <div key={t} className="card" style={{ padding: '16px 20px', borderLeft: '3px solid var(--accent)' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>{t}</div>
-            <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>{d}</p>
-          </div>
+          <StaggerItem key={t}>
+            <div className="card sec-card" style={{ padding: '16px 20px', borderLeft: '3px solid var(--accent)' }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>{t}</div>
+              <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>{d}</p>
+            </div>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
       <h2 style={{ ...cardTitle, fontSize: 17, marginBottom: 12 }}>Built on</h2>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
         {stack.map(s => <span key={s} className="pill">{s}</span>)}
@@ -239,17 +260,19 @@ function Methodology() {
 function Disclosures() {
   return (
     <>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 14, marginBottom: 28 }}>
+      <Stagger style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: 14, marginBottom: 28 }}>
         {disclosures.map(([t, d]) => (
-          <div key={t} className="card" style={{ padding: 20 }}>
+          <StaggerItem key={t}>
+          <div className="card sec-card" style={{ padding: 20, height: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <Warning size={15} weight="fill" style={{ color: 'var(--warning)' }} />
               <h3 style={{ fontSize: 14, fontWeight: 600 }}>{t}</h3>
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.6 }}>{d}</p>
           </div>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
       <p style={{ fontSize: 14, color: 'var(--text-2)', lineHeight: 1.7, maxWidth: 720 }}>
         The source is on <a href={REPO} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>GitHub</a> and the threat model is in <a href={`${REPO}/blob/main/THREAT_MODEL.md`} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>THREAT_MODEL.md</a>. See the <Link href="/terms" style={{ color: 'var(--accent)' }}>terms of use</Link> for the full legal text.
       </p>

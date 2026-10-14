@@ -1,14 +1,15 @@
 'use client'
-import { Suspense, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
   ArrowRight,
   ArrowSquareOut,
   BookOpen,
   Code,
   Cube,
+  Plus,
   ShieldCheck,
 } from '@phosphor-icons/react'
 import {
@@ -23,6 +24,7 @@ import {
   TopicCard,
   UnderlineTabs,
 } from '@/components/learn/ui'
+import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
 
 const REPO = 'https://github.com/sabijuraa/lending-core'
 
@@ -63,12 +65,15 @@ const SECTION_TAB: Record<string, Tab> = {
   'adr-1': 'developers',
   'adr-2': 'developers',
   'adr-3': 'developers',
+  faq: 'learn',
+  glossary: 'learn',
 }
 
 /* ─── Page ───────────────────────────────────────────────── */
 
 function DocsHub() {
   const router = useRouter()
+  const reduce = useReducedMotion()
   const params = useSearchParams()
   const tabParam = params.get('tab') as Tab | null
   const sectionParam = params.get('section')
@@ -90,33 +95,43 @@ function DocsHub() {
   }
 
   return (
-    <div className="section-container" style={{ maxWidth: 1160, padding: '48px 24px 96px' }}>
-      <motion.header
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        style={{ marginBottom: 28 }}
-      >
-        <h1 className="page-heading" style={{ fontSize: 'clamp(30px, 4vw, 40px)', marginBottom: 10 }}>
+    <div className="section-container" style={{ maxWidth: 1160, padding: '48px 24px 96px', overflowX: 'hidden' }}>
+      <header style={{ marginBottom: 28 }}>
+        <motion.h1
+          initial={reduce ? false : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+          className="page-heading"
+          style={{ fontSize: 'clamp(30px, 4vw, 40px)', marginBottom: 10 }}
+        >
           Learn &amp; Docs
-        </h1>
-        <p className="page-subtitle" style={{ maxWidth: 560 }}>
-          Understand the protocol, assess the risks and build with confidence.
-        </p>
-      </motion.header>
+        </motion.h1>
+        <motion.p
+          initial={reduce ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+          className="page-subtitle"
+          style={{ maxWidth: 580 }}
+        >
+          Everything you need to use lending-core with confidence, from your first deposit to how the risks really work.
+        </motion.p>
+      </header>
 
       <UnderlineTabs tabs={TABS} active={tab} onChange={id => go(id)} />
 
-      <motion.div
-        key={tab}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {tab === 'learn' && <LearnTab go={go} />}
-        {tab === 'risk' && <RiskTab />}
-        {tab === 'developers' && <DevelopersTab />}
-      </motion.div>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={tab}
+          initial={reduce ? false : { opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={reduce ? { opacity: 0 } : { opacity: 0, x: -16 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {tab === 'learn' && <LearnTab go={go} />}
+          {tab === 'risk' && <RiskTab />}
+          {tab === 'developers' && <DevelopersTab />}
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }
@@ -140,6 +155,42 @@ export default function DocsPage() {
 
 /* ─── Learn tab ──────────────────────────────────────────── */
 
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: 'Do I have to sell my crypto to borrow?',
+    a: 'No. You deposit it as collateral and keep owning it. If its price goes up while you borrow, that gain is still yours.',
+  },
+  {
+    q: 'What happens if the price of my collateral falls?',
+    a: 'Your health factor drops. While it stays above 1 nothing happens. If it reaches 1, your position can be liquidated, so add collateral or repay part of the loan before then.',
+  },
+  {
+    q: 'How do lenders earn?',
+    a: 'Borrowers pay interest, and all of it goes to the lenders in that market. There is no protocol fee. Your balance grows on its own and there is nothing to claim.',
+  },
+  {
+    q: 'Can I withdraw at any time?',
+    a: 'Yes, as long as the money is not currently lent out. When a market is very busy, rates rise sharply, which brings in new lenders and encourages borrowers to repay so liquidity comes back.',
+  },
+  {
+    q: 'What if another market gets hit by a bad price or a crash?',
+    a: 'It stays there. Every market has its own collateral, its own price feed and its own rules, so a problem in one market cannot drain another.',
+  },
+  {
+    q: 'Is this live with real money?',
+    a: 'Not yet. lending-core runs on the Base Sepolia testnet and the contracts have not been externally audited. Use test tokens and treat it as a preview.',
+  },
+]
+
+const GLOSSARY: [string, string][] = [
+  ['Collateral', 'What you deposit to secure a loan. It stays yours unless the position is liquidated.'],
+  ['Health factor', 'A single number showing how safe your loan is. Above 1 is safe, and higher means more room.'],
+  ['LLTV', 'The share of your collateral value you can owe before liquidation becomes possible. At 80%, $100 of collateral supports up to $80 of debt.'],
+  ['Utilization', 'How much of the money lenders supplied is currently borrowed. It drives the interest rate.'],
+  ['Liquidation', 'When a loan runs out of room, anyone can repay it and receive the collateral plus a small bonus.'],
+  ['Price feed', 'The oracle that tells a market what its collateral is worth. Each market has exactly one.'],
+]
+
 function LearnTab({ go }: { go: (t: Tab, section?: string) => void }) {
   return (
     <>
@@ -147,139 +198,209 @@ function LearnTab({ go }: { go: (t: Tab, section?: string) => void }) {
         className="learn-hub-grid"
         style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 20, alignItems: 'stretch' }}
       >
-        <div className="learn-card-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          <TopicCard
-            icon={<BookOpen size={20} />}
-            title="How Lending Works"
-            desc="A simple guide to supply, borrow, interest rates and liquidations."
-            href="/how-it-works"
-          />
-          <TopicCard
-            icon={<Cube size={20} />}
-            title="Isolated Markets"
-            desc="Why isolation reduces contagion risk and how it works."
-            onClick={() => go('learn', 'isolated-markets')}
-          />
-          <TopicCard
-            icon={<ShieldCheck size={20} />}
-            title="Risk Management"
-            desc="Collateral, oracles, health factor and liquidation mechanics."
-            onClick={() => go('risk')}
-          />
-          <TopicCard
-            icon={<Code size={20} />}
-            title="Developer Documentation"
-            desc="Contracts, interfaces, integration guides and examples."
-            onClick={() => go('developers')}
-          />
-        </div>
+        <Stagger className="learn-card-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <StaggerItem style={{ display: 'flex' }}>
+            <TopicCard
+              icon={<BookOpen size={20} />}
+              title="How Lending Works"
+              desc="The whole journey in plain words, from your first deposit to closing your loan."
+              href="/how-it-works"
+            />
+          </StaggerItem>
+          <StaggerItem style={{ display: 'flex' }}>
+            <TopicCard
+              icon={<Cube size={20} />}
+              title="Isolated Markets"
+              desc="Why keeping every market separate means other people's risk never becomes yours."
+              onClick={() => go('learn', 'isolated-markets')}
+            />
+          </StaggerItem>
+          <StaggerItem style={{ display: 'flex' }}>
+            <TopicCard
+              icon={<ShieldCheck size={20} />}
+              title="Risk Management"
+              desc="Your health factor, liquidation and price feeds, so you always know where you stand."
+              onClick={() => go('risk')}
+            />
+          </StaggerItem>
+          <StaggerItem style={{ display: 'flex' }}>
+            <TopicCard
+              icon={<Code size={20} />}
+              title="Developer Documentation"
+              desc="Contracts, interfaces, integration guides and examples."
+              onClick={() => go('developers')}
+            />
+          </StaggerItem>
+        </Stagger>
 
-        <BuildCard onDocs={() => go('developers')} />
+        <Reveal from="right" delay={0.15} style={{ display: 'flex' }}>
+          <BuildCard onDocs={() => go('developers')} />
+        </Reveal>
       </div>
 
       <TwoCol
         nav={[
-          { id: 'how-it-works', label: 'How it works' },
+          { id: 'how-it-works', label: 'The big idea' },
           { id: 'who-its-for', label: 'Who it is for' },
-          { id: 'what-it-doesnt-do', label: 'What it does not do' },
+          { id: 'what-it-doesnt-do', label: 'What we left out' },
           { id: 'isolated-markets', label: 'Isolated markets' },
-          { id: 'market-parameters', label: 'Market parameters' },
-          { id: 'depositing', label: 'Supplying' },
-          { id: 'share-accounting', label: 'Share accounting' },
+          { id: 'market-parameters', label: 'Reading a market' },
+          { id: 'depositing', label: 'Lending' },
+          { id: 'share-accounting', label: 'How earnings grow' },
           { id: 'withdrawing', label: 'Withdrawing' },
-          { id: 'collateral', label: 'Collateral' },
+          { id: 'collateral', label: 'Borrowing' },
+          { id: 'faq', label: 'Questions' },
+          { id: 'glossary', label: 'Glossary' },
         ]}
         title="Guides"
       >
-        <DocSection id="how-it-works" eyebrow="Overview" title="How it works">
-          <p>Pooled lending protocols connect markets together. When one oracle fails, the damage spreads to everything connected to it.</p>
-          <p>lending-core keeps every market completely separate. Each one has its own oracle, its own collateral and its own rules. A problem in one market stays in that market.</p>
+        <DocSection id="how-it-works" eyebrow="Start here" title="The big idea">
+          <p>Most lending apps put everyone&apos;s money in one shared pool. That is efficient right up until one asset or one price feed goes wrong, and then everybody in the pool shares the damage.</p>
+          <p>lending-core does it differently. Every market is its own sealed room with one asset to borrow, one asset to deposit and one price feed. What happens in one room stays in that room.</p>
           <ol>
-            <li>You deposit collateral into a specific market</li>
-            <li>You borrow against that collateral up to the market LLTV</li>
-            <li>Interest accrues to your position automatically</li>
-            <li>If your position becomes unhealthy, anyone can liquidate it</li>
+            <li>You choose a market you understand</li>
+            <li>You deposit collateral and borrow against it, or you lend and earn</li>
+            <li>Interest builds up automatically while the position is open</li>
+            <li>If a loan runs out of room, it gets closed out so lenders are always repaid</li>
           </ol>
           <p>
-            Each market has exactly one collateral asset, one loan asset and one oracle. No sharing, no pooling, no cross contamination.{' '}
-            <Link href="/how-it-works" style={{ color: 'var(--accent)', fontWeight: 600 }}>Read the full walkthrough</Link>
+            You only ever take on the risk of the markets you pick.{' '}
+            <Link href="/how-it-works" style={{ color: 'var(--accent)', fontWeight: 600 }}>Follow the full walkthrough</Link>
           </p>
         </DocSection>
 
-        <DocSection id="who-its-for" eyebrow="Overview" title="Who it is for">
-          <h4>Suppliers</h4>
-          <p>You have assets sitting idle and want yield without active management. You deposit, you earn, you withdraw when you need liquidity.</p>
+        <DocSection id="who-its-for" eyebrow="Start here" title="Who it is for">
+          <h4>Lenders</h4>
+          <p>You have stablecoins or other assets sitting idle and want them to earn. You deposit, your balance grows, and you withdraw whenever you need it.</p>
           <h4>Borrowers</h4>
-          <p>You hold assets you do not want to sell and want capital to deploy elsewhere. You post collateral, take a loan and keep your exposure to the underlying asset.</p>
+          <p>You hold assets you believe in and do not want to sell, but you need cash today. You post them as collateral, borrow, and keep all the upside.</p>
           <h4>Liquidators</h4>
-          <p>You run bots that watch for unhealthy positions. When you find one, you repay the debt and receive the collateral plus the liquidation bonus.</p>
+          <p>You watch for loans that have run out of room. Closing them out earns you a bonus and keeps every market solvent for its lenders.</p>
         </DocSection>
 
-        <DocSection id="what-it-doesnt-do" eyebrow="Overview" title="What it does not do">
-          <p>lending-core is deliberately minimal. These are the things it chose not to build.</p>
+        <DocSection id="what-it-doesnt-do" eyebrow="Start here" title="What we left out, on purpose">
+          <p>lending-core is deliberately small. Every feature we skipped is one less thing that can go wrong with your money.</p>
           <ul>
-            <li><strong>No pooled liquidity.</strong> Capital efficiency is lower than pooled protocols. That is the tradeoff for isolation.</li>
-            <li><strong>No governance.</strong> Parameters are set at market creation and never change.</li>
-            <li><strong>No upgrades.</strong> There is no proxy and no admin key. The contracts are immutable.</li>
-            <li><strong>No protocol fees.</strong> All interest paid by borrowers goes to suppliers.</li>
-            <li><strong>No token.</strong> There is no protocol token.</li>
+            <li><strong>No shared pool.</strong> It is a little less capital efficient. That is the price of keeping you safe from other markets.</li>
+            <li><strong>No governance votes.</strong> A market&apos;s rules are set when it is created and can never be changed under you.</li>
+            <li><strong>No upgrades or admin keys.</strong> Nobody can pause your market, change the code or move your funds.</li>
+            <li><strong>No protocol fees.</strong> Every bit of interest borrowers pay goes to lenders.</li>
+            <li><strong>No token.</strong> There is nothing to farm, stake or speculate on.</li>
           </ul>
         </DocSection>
 
         <DocSection id="isolated-markets" eyebrow="Markets" title="Isolated markets">
-          <p>A market is a fixed pair of loan asset and collateral asset with one oracle, one rate model, one LLTV, one liquidation bonus and one staleness limit. Its id is the hash of those parameters, so nobody can change them after creation.</p>
-          <p>Anyone can create a market without a governance vote. A bad oracle or a crashing collateral can only hurt the market that chose it. Every other market keeps running.</p>
+          <p>A market is a fixed recipe. One asset you can borrow, one asset you can deposit, one price feed, one interest rate curve and one liquidation limit. Once a market exists, that recipe is locked forever.</p>
+          <p>Anyone can open a new market without asking permission. That freedom is safe because a market with a poor price feed or a risky asset can only ever hurt the people who chose to use it. Every other market keeps running as normal.</p>
         </DocSection>
 
-        <DocSection id="market-parameters" eyebrow="Markets" title="Market parameters">
+        <DocSection id="market-parameters" eyebrow="Markets" title="Reading a market before you use it">
           <h4>LLTV</h4>
-          <p>The liquidation loan to value. It is the largest share of collateral value you can owe before the position can be liquidated. At 80% LLTV you can borrow up to $80 for every $100 of collateral.</p>
+          <p>How much you can owe compared to your collateral before liquidation becomes possible. At 80%, every $100 of collateral supports up to $80 of debt. Lower numbers are more forgiving.</p>
           <h4>Liquidation bonus</h4>
-          <p>The extra collateral a liquidator receives on top of the debt they repay. The contract requires it to be above zero and at most 20%.</p>
-          <h4>Max staleness</h4>
-          <p>How old an oracle price may be before the market refuses to use it. Set per market because a stablecoin price stays valid longer than a volatile one.</p>
-          <h4>Rate model</h4>
-          <p>Each market points at a rate model contract. The testnet deployment uses a kinked curve with a 0% base rate, an 80% kink, about 4% APR at the kink and 100% APR at full utilization.</p>
+          <p>The reward a liquidator receives for closing out a loan that ran out of room. It is capped at 20%, and most markets use far less.</p>
+          <h4>Price freshness</h4>
+          <p>How old a price may be before the market refuses to use it. If the feed goes quiet, the market waits rather than acting on stale information.</p>
+          <h4>Interest rate</h4>
+          <p>Rates follow demand. They stay low while plenty of money is available and rise steeply once a market is nearly fully borrowed, which brings new lenders in and keeps withdrawals possible.</p>
         </DocSection>
 
-        <DocSection id="depositing" eyebrow="For suppliers" title="Supplying">
-          <p>To earn yield, supply the loan asset to a market. You receive supply shares, rounded down in favor of the market.</p>
-          <CodeBlock>
-            <K>function</K> supply(MarketParams params, <K>uint256</K> assets, <K>address</K> onBehalf){'\n'}
-            {'    '}<K>external returns</K> (<K>uint256</K> shares);
-          </CodeBlock>
-          <p>Your shares grow in value as borrowers pay interest. There is nothing to claim.</p>
+        <DocSection id="depositing" eyebrow="For lenders" title="Lending">
+          <p>Pick a market, deposit the asset it lends out and start earning straight away. Borrowers in that market pay you interest for as long as your deposit is there.</p>
+          <p>Before you lend, look at the market&apos;s collateral and price feed. They decide how safe your deposit is, so choose markets you are comfortable with.</p>
         </DocSection>
 
-        <DocSection id="share-accounting" eyebrow="For suppliers" title="Share accounting">
-          <p>Your position is tracked in shares, not amounts. The exchange rate between shares and assets rises as interest accrues.</p>
+        <DocSection id="share-accounting" eyebrow="For lenders" title="How your earnings grow">
+          <p>When you lend you receive a share of the market. As borrowers pay interest, each share becomes worth a little more. You never have to claim or compound anything.</p>
           <ul>
-            <li>You supply 1,000 USDC when one share is worth one USDC</li>
-            <li>You receive 1,000 shares</li>
-            <li>After interest accrues one share is worth 1.05 USDC</li>
-            <li>Your 1,000 shares are now worth 1,050 USDC</li>
+            <li>You lend 1,000 USDC</li>
+            <li>Borrowers pay interest over the following months</li>
+            <li>Your share of the market grows in value</li>
+            <li>When you withdraw, you get your 1,000 USDC plus everything it earned</li>
           </ul>
-          <p>Rounding always favors the protocol, so the market can never owe more than it holds because of rounding.</p>
+          <p>Every calculation rounds in favour of the market, so it can never end up owing more than it holds.</p>
         </DocSection>
 
-        <DocSection id="withdrawing" eyebrow="For suppliers" title="Withdrawing">
-          <p>Withdraw your assets plus accrued yield at any time, as long as the market has the liquidity.</p>
-          <CodeBlock>
-            <K>function</K> withdraw(MarketParams params, <K>uint256</K> assets, <K>address</K> onBehalf, <K>address</K> receiver){'\n'}
-            {'    '}<K>external returns</K> (<K>uint256</K> shares);
-          </CodeBlock>
-          <p>You can only withdraw what is not currently borrowed. If utilization is 80%, only 20% of supplied assets are available. The call reverts with <code>InsufficientLiquidity</code> otherwise.</p>
+        <DocSection id="withdrawing" eyebrow="For lenders" title="Withdrawing">
+          <p>Take out your deposit and its earnings whenever you like, as long as that money is not lent out at that moment.</p>
+          <p>If a market is 80% borrowed, 20% of the deposits are free to withdraw right now. When a market gets that busy, its rate climbs quickly, which pulls in new lenders and encourages borrowers to repay, so liquidity returns.</p>
         </DocSection>
 
-        <DocSection id="collateral" eyebrow="For borrowers" title="Collateral">
-          <p>To borrow you first supply collateral to the market.</p>
-          <CodeBlock>
-            <K>function</K> supplyCollateral(MarketParams params, <K>uint256</K> assets, <K>address</K> onBehalf) <K>external</K>;
-          </CodeBlock>
-          <p>Collateral sits in the LendingCore contract and can be seized if your position becomes unhealthy. Withdrawing collateral is only allowed while the position stays healthy afterwards.</p>
+        <DocSection id="collateral" eyebrow="For borrowers" title="Borrowing">
+          <p>Deposit collateral into a market, then borrow up to the limit it allows. The app shows your health factor and liquidation price before you confirm, so you can choose how much cushion to leave.</p>
+          <p>You can add collateral or repay at any time. You can take collateral back out whenever the loan would still be healthy afterwards.</p>
+        </DocSection>
+
+        <DocSection id="faq" eyebrow="Questions" title="Frequently asked questions">
+          <Faq items={FAQ} />
+        </DocSection>
+
+        <DocSection id="glossary" eyebrow="Words we use" title="Glossary">
+          <div className="learn-card-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+            {GLOSSARY.map(([t, d]) => (
+              <div key={t} className="lift-card" style={{ padding: 16, border: '1px solid var(--border-subtle)', borderRadius: 10, background: 'var(--surface-2)' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>{t}</div>
+                <div style={{ fontSize: 13, color: 'var(--text-3)', lineHeight: 1.6 }}>{d}</div>
+              </div>
+            ))}
+          </div>
         </DocSection>
       </TwoCol>
     </>
+  )
+}
+
+function Faq({ items }: { items: { q: string; a: string }[] }) {
+  const [open, setOpen] = useState<number | null>(0)
+  return (
+    <div style={{ marginBottom: 16, borderTop: '1px solid var(--border-subtle)' }}>
+      {items.map((it, i) => {
+        const on = open === i
+        return (
+          <div key={it.q} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+            <button
+              type="button"
+              aria-expanded={on}
+              onClick={() => setOpen(on ? null : i)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 16,
+                padding: '16px 0',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                font: 'inherit',
+                fontSize: 14.5,
+                fontWeight: 600,
+                color: 'var(--text-1)',
+              }}
+            >
+              {it.q}
+              <motion.span animate={{ rotate: on ? 45 : 0 }} transition={{ duration: 0.2 }} style={{ display: 'inline-flex', color: 'var(--accent)', flexShrink: 0 }}>
+                <Plus size={16} weight="bold" />
+              </motion.span>
+            </button>
+            <AnimatePresence initial={false}>
+              {on && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <p style={{ paddingBottom: 4 }}>{it.a}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -296,6 +417,7 @@ function BuildCard({ onDocs }: { onDocs: () => void }) {
         display: 'flex',
         flexDirection: 'column',
         minHeight: 420,
+        width: '100%',
       }}
     >
       <div
@@ -368,78 +490,78 @@ function RiskTab() {
         { id: 'health-factor', label: 'Health factor' },
         { id: 'liquidation-price', label: 'Liquidation price' },
         { id: 'liquidations', label: 'Liquidations' },
-        { id: 'economic-incentives', label: 'Liquidator incentives' },
+        { id: 'economic-incentives', label: 'Why liquidators show up' },
         { id: 'bad-debt', label: 'Bad debt' },
-        { id: 'oracle-risk', label: 'Oracle risk' },
+        { id: 'oracle-risk', label: 'Price feed risk' },
         { id: 'liquidation-risk', label: 'Liquidation risk' },
-        { id: 'rate-model', label: 'Rate model risk' },
+        { id: 'rate-model', label: 'Rate risk' },
         { id: 'smart-contract-risk', label: 'Smart contract risk' },
       ]}
     >
       <DocSection id="health-factor" eyebrow="Borrowers" title="Health factor">
-        <p>Your health factor measures how close a position is to liquidation.</p>
-        <CodeBlock>healthFactor = (collateralValue * LLTV) / debt</CodeBlock>
+        <p>Your health factor is the one number to watch when you borrow. It compares what your collateral can support with what you owe.</p>
+        <CodeBlock>health factor = (collateral value × LLTV) ÷ debt</CodeBlock>
         <ul>
-          <li><strong>Above 1.0</strong> the position is healthy</li>
-          <li><strong>At 1.0</strong> the position sits exactly at the liquidation threshold</li>
-          <li><strong>Below 1.0</strong> anyone can liquidate it</li>
+          <li><strong>Above 1</strong> your loan is safe, and the higher the better</li>
+          <li><strong>At 1</strong> your loan is right at the edge</li>
+          <li><strong>Below 1</strong> anyone can liquidate it</li>
         </ul>
-        <p>On chain the check is simple. A position is healthy while its debt is no larger than collateral value times LLTV. If the collateral price drops or interest grows the debt, the health factor falls.</p>
+        <p>It falls when your collateral price drops or as interest adds to your debt. It rises when you add collateral or repay.</p>
       </DocSection>
 
       <DocSection id="liquidation-price" eyebrow="Borrowers" title="Liquidation price">
-        <p>The liquidation price is the collateral price at which your position becomes liquidatable.</p>
-        <CodeBlock>liquidationPrice = debt / (collateralAmount * LLTV)</CodeBlock>
-        <p>For example, with $100 of collateral, $60 of debt and a 75% LLTV, the position becomes liquidatable once the collateral is worth $80, which is 80% of its current price.</p>
+        <p>This is the collateral price at which your loan would become liquidatable. Knowing it tells you exactly how far prices can move before you need to act.</p>
+        <CodeBlock>liquidation price = debt ÷ (collateral amount × LLTV)</CodeBlock>
+        <p>For example, with $100 of collateral, $60 of debt and a 75% LLTV, the loan becomes liquidatable once the collateral is worth $80, a 20% fall from today.</p>
       </DocSection>
 
       <DocSection id="liquidations" eyebrow="Liquidation" title="How liquidation works">
-        <p>Anyone can liquidate any unhealthy position. The whole position is closed in one call. There is no partial close factor.</p>
+        <p>Liquidation is how lenders are protected. When a loan runs out of room, anyone can close it out in a single step.</p>
         <ol>
-          <li>The market accrues interest and reads a fresh oracle price</li>
-          <li>The call reverts with <code>PositionHealthy</code> if the position is still healthy</li>
-          <li>The liquidator repays the full debt</li>
-          <li>The liquidator receives collateral worth the debt plus the liquidation bonus</li>
+          <li>The market brings interest up to date and checks a fresh price</li>
+          <li>If the loan has recovered and is healthy again, nothing happens</li>
+          <li>Otherwise the liquidator repays the whole loan</li>
+          <li>The liquidator receives collateral worth the loan plus the market&apos;s bonus, and the borrower keeps whatever collateral is left</li>
         </ol>
       </DocSection>
 
-      <DocSection id="economic-incentives" eyebrow="Liquidation" title="Liquidator incentives">
-        <p>The bonus is what makes liquidation worth running. With a 5% bonus, a liquidator who repays $100 of debt receives $105 of collateral.</p>
-        <p>The bonus has to cover gas and price risk, and stay small enough not to punish borrowers more than necessary. The contract caps it at 20%.</p>
+      <DocSection id="economic-incentives" eyebrow="Liquidation" title="Why liquidators show up">
+        <p>The bonus is what makes closing loans worth someone&apos;s time. With a 5% bonus, a liquidator who repays $100 of debt receives $105 of collateral.</p>
+        <p>It needs to be big enough to cover their costs in a fast market, and small enough not to punish borrowers more than necessary. The contract caps it at 20%.</p>
       </DocSection>
 
       <DocSection id="bad-debt" eyebrow="Liquidation" title="Bad debt">
-        <p>If collateral is worth less than the debt plus bonus, the liquidator takes all remaining collateral and repays only what that collateral is worth. Any debt left after that can never be repaid.</p>
-        <p>The protocol writes that shortfall off immediately. Outstanding borrow shares are burned and the loss comes out of total supplied assets, shared by every supplier in that market in proportion to their shares. A <code>BadDebtRealized</code> event records it. Other markets are untouched.</p>
+        <p>In a very sharp crash, collateral can end up worth less than the loan it backs. The liquidator then takes all the remaining collateral and the rest of the loan can never be repaid.</p>
+        <p>lending-core is honest about that loss straight away. It is shared by the lenders of that one market in proportion to their deposits and recorded publicly on chain. No other market is touched.</p>
       </DocSection>
 
-      <DocSection id="oracle-risk" eyebrow="Oracles" title="Oracle risk">
-        <p>Every borrow and every liquidation depends on the market oracle. A manipulated oracle could let an attacker borrow against inflated collateral or wrongly liquidate healthy borrowers.</p>
-        <h4>Fail closed</h4>
-        <p>A price of zero, a price stamped in the future or a price older than the market staleness limit makes the call revert. The protocol acts only on a price it can trust, or it does not act.</p>
-        <h4>The cost</h4>
-        <p>When a feed goes stale, borrowing and liquidations stop together. In a fast crash a position can slide underwater while the market waits for a fresh price. A conservative LLTV is the cushion for that window.</p>
-        <p>Isolation limits the blast radius. A bad oracle only affects the market that chose it.</p>
+      <DocSection id="oracle-risk" eyebrow="Price feeds" title="Price feed risk">
+        <p>Every loan and every liquidation depends on the market&apos;s price feed. A wrong price could let someone borrow too much or close out a healthy loan.</p>
+        <h4>When in doubt, wait</h4>
+        <p>A price of zero, a price from the future or a price older than the market allows is refused. The market acts only on a price it can trust, or it does not act at all.</p>
+        <h4>The tradeoff</h4>
+        <p>While a feed is stale, both borrowing and liquidations pause. In a fast crash a loan can slip underwater during that pause, which is why a conservative LLTV matters.</p>
+        <p>Isolation limits the damage. A bad feed only affects the market that chose it.</p>
       </DocSection>
 
       <DocSection id="liquidation-risk" eyebrow="Borrowers" title="Liquidation risk">
-        <p>If you borrow, you can be liquidated. That happens when the collateral price falls, when accrued interest pushes the debt up, or when you do not add collateral or repay in time.</p>
-        <p>Because liquidation closes the whole position, you lose collateral equal to your debt plus the liquidation bonus. Whatever collateral remains stays yours.</p>
+        <p>If you borrow, you can be liquidated. It happens when your collateral price falls, when interest pushes your debt up, or when you do not add collateral or repay in time.</p>
+        <p>Liquidation closes the whole loan. You lose collateral equal to your debt plus the bonus, and keep the rest.</p>
       </DocSection>
 
-      <DocSection id="rate-model" eyebrow="Rates" title="Rate model risk">
-        <p>Each market uses a two slope borrow rate joined at a kink. Below the kink borrowing is cheap. Above it the rate climbs fast to push borrowers to repay and pull new suppliers in, which restores withdrawable liquidity.</p>
-        <p>A short spike in utilization can hit existing borrowers with a sharp rate increase they did not choose. Watch utilization on markets you borrow from.</p>
+      <DocSection id="rate-model" eyebrow="Rates" title="Rate risk">
+        <p>Rates are cheap while a market has plenty of spare money and rise steeply once it is nearly fully borrowed. That steep part protects lenders by bringing liquidity back.</p>
+        <p>For borrowers it means a busy week can raise your rate quickly. Keep an eye on how full the markets you borrow from are.</p>
       </DocSection>
 
       <DocSection id="smart-contract-risk" eyebrow="Protocol" title="Smart contract risk">
-        <p>All smart contracts carry risk. lending-core is</p>
+        <p>All software can have bugs, and smart contracts are no exception. Today lending-core is</p>
         <ul>
           <li>Not yet externally audited</li>
           <li>Covered by unit, fuzz and invariant tests</li>
           <li>Immutable, with no upgrade path and no admin key</li>
         </ul>
-        <p>Treat it as testnet software. <Link href="/security" style={{ color: 'var(--accent)', fontWeight: 600 }}>See security and risk disclosures</Link></p>
+        <p>Treat it as testnet software. <Link href="/security" style={{ color: 'var(--accent)', fontWeight: 600 }}>Read the security and risk disclosures</Link></p>
       </DocSection>
     </TwoCol>
   )
@@ -560,6 +682,7 @@ function DevelopersTab() {
               className="topic-card"
               style={{
                 display: 'block',
+                height: '100%',
                 textDecoration: 'none',
                 color: 'inherit',
                 padding: 16,
@@ -630,6 +753,7 @@ function TwoCol({
       </nav>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
         {children}
+        <Reveal>
         <div
           style={{
             display: 'flex',
@@ -643,7 +767,7 @@ function TwoCol({
             color: '#FFFFFF',
           }}
         >
-          <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>Ready to put it into practice?</span>
+          <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)' }}>Ready to put it into practice? Every market shows its risk up front.</span>
           <Link
             href="/markets"
             className="btn"
@@ -652,6 +776,7 @@ function TwoCol({
             Explore markets <ArrowRight size={13} />
           </Link>
         </div>
+        </Reveal>
       </div>
     </div>
   )

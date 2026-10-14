@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import type { ReactNode } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { useEffect, useState, type ReactNode } from 'react'
 import { ArrowRight } from '@phosphor-icons/react'
 
 export const DARK = '#102B27'
@@ -162,7 +162,11 @@ export function DocSection({
   children: ReactNode
 }) {
   return (
-    <section
+    <motion.section
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.08 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
       id={id}
       className="learn-doc"
       style={{
@@ -182,7 +186,7 @@ export function DocSection({
         {title}
       </h3>
       {children}
-    </section>
+    </motion.section>
   )
 }
 
@@ -271,15 +275,22 @@ export function StepsBand({
   linkHref,
   linkLabel,
   steps = LENDING_STEPS,
-  activeIndex = 1,
 }: {
   title: string
   subtitle: string
   linkHref?: string
   linkLabel?: string
   steps?: string[]
-  activeIndex?: number
 }) {
+  const reduce = useReducedMotion()
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  useEffect(() => {
+    if (reduce) return
+    const id = setInterval(() => setActiveIndex(i => (i + 1) % steps.length), 2400)
+    return () => clearInterval(id)
+  }, [reduce, steps.length])
+
   return (
     <section
       style={{
@@ -291,9 +302,13 @@ export function StepsBand({
         padding: 'clamp(28px, 4vw, 48px)',
       }}
     >
-      <div style={{ position: 'absolute', right: -40, top: -60, pointerEvents: 'none' }}>
+      <motion.div
+        style={{ position: 'absolute', right: -40, top: -60, pointerEvents: 'none' }}
+        animate={reduce ? undefined : { rotate: 360 }}
+        transition={{ duration: 120, repeat: Infinity, ease: 'linear' }}
+      >
         <WireGlobe size={420} opacity={0.45} />
-      </div>
+      </motion.div>
       <div style={{ position: 'relative', maxWidth: 520 }}>
         <h2 style={{ fontSize: 'clamp(24px, 3vw, 30px)', fontWeight: 600, letterSpacing: '-0.025em', marginBottom: 12 }}>
           {title}
@@ -308,8 +323,12 @@ export function StepsBand({
           </Link>
         )}
       </div>
-      <ol
+      <motion.ol
         className="steps-band-row"
+        initial={reduce ? false : 'hidden'}
+        whileInView="show"
+        viewport={{ once: true, amount: 0.3 }}
+        variants={{ hidden: {}, show: { transition: { staggerChildren: 0.14, delayChildren: 0.1 } } }}
         style={{
           position: 'relative',
           listStyle: 'none',
@@ -324,8 +343,10 @@ export function StepsBand({
         }}
       >
         {steps.map((s, i) => (
-          <li
+          <motion.li
             key={s}
+            variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } } }}
+            onMouseEnter={() => setActiveIndex(i)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -348,15 +369,40 @@ export function StepsBand({
                 color: '#FFFFFF',
                 background: i === activeIndex ? 'rgba(127,181,155,0.25)' : 'rgba(255,255,255,0.08)',
                 border: i === activeIndex ? '1.5px solid #7FB59B' : '1px solid rgba(255,255,255,0.22)',
+                boxShadow: i === activeIndex ? '0 0 0 6px rgba(127,181,155,0.12)' : 'none',
+                transition: 'background 400ms ease, border-color 400ms ease, box-shadow 400ms ease',
               }}
             >
               {i + 1}
             </span>
-            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.35 }}>{s}</span>
-          </li>
+            <span
+              style={{
+                fontSize: 13,
+                color: i === activeIndex ? '#FFFFFF' : 'rgba(255,255,255,0.72)',
+                lineHeight: 1.35,
+                transition: 'color 400ms ease',
+              }}
+            >
+              {s}
+            </span>
+          </motion.li>
         ))}
-      </ol>
+      </motion.ol>
     </section>
+  )
+}
+
+/* ─── Section heading ────────────────────────────────────── */
+
+export function SectionHead({ eyebrow, title, body }: { eyebrow: string; title: string; body?: string }) {
+  return (
+    <div style={{ marginBottom: 24, maxWidth: 640 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--positive)', marginBottom: 8 }}>
+        {eyebrow}
+      </div>
+      <h2 style={{ fontSize: 'clamp(22px, 2.6vw, 28px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)', lineHeight: 1.2 }}>{title}</h2>
+      {body && <p style={{ fontSize: 15, color: 'var(--text-3)', lineHeight: 1.65, marginTop: 10 }}>{body}</p>}
+    </div>
   )
 }
 
@@ -365,7 +411,9 @@ export function StepsBand({
 export function LearnStyles() {
   return (
     <style>{`
-      .topic-card:hover { border-color: var(--accent-border) !important; box-shadow: 0 6px 20px rgba(16,43,39,0.06); transform: translateY(-1px); }
+      .topic-card:hover, .lift-card:hover { border-color: var(--accent-border) !important; box-shadow: 0 10px 28px rgba(16,43,39,0.08); transform: translateY(-3px); }
+      .lift-card { transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease; }
+      @media (prefers-reduced-motion: reduce) { .topic-card:hover, .lift-card:hover { transform: none; } }
       .topic-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       .learn-doc p { font-size: 14px; color: var(--text-2); line-height: 1.75; margin-bottom: 16px; }
       .learn-doc h4 { font-size: 14px; font-weight: 600; color: var(--text-1); margin: 20px 0 8px; }
