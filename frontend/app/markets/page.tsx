@@ -64,7 +64,7 @@ export default function MarketsPage() {
     })
   }, [markets, filter, sortKey, sortDir, search])
 
-  const SortIcon = ({ col }: { col: SortKey }) => {
+  const sortIcon = (col: SortKey) => {
     if (sortKey !== col) return null
     return sortDir === 'desc'
       ? <CaretDown size={10} weight="bold" style={{ marginLeft: 3 }} />
@@ -163,25 +163,25 @@ export default function MarketsPage() {
                   style={{ paddingTop: 16, cursor: 'pointer', userSelect: 'none' }}
                   onClick={() => toggleSort('supply-apy')}
                 >
-                  Supply APY <SortIcon col="supply-apy" />
+                  Supply APY {sortIcon('supply-apy')}
                 </th>
                 <th
                   style={{ paddingTop: 16, cursor: 'pointer', userSelect: 'none' }}
                   onClick={() => toggleSort('borrow-apy')}
                 >
-                  Borrow APY <SortIcon col="borrow-apy" />
+                  Borrow APY {sortIcon('borrow-apy')}
                 </th>
                 <th
                   style={{ paddingTop: 16, width: 160, cursor: 'pointer', userSelect: 'none' }}
                   onClick={() => toggleSort('utilization')}
                 >
-                  Utilization <SortIcon col="utilization" />
+                  Utilization {sortIcon('utilization')}
                 </th>
                 <th
                   style={{ paddingTop: 16, cursor: 'pointer', userSelect: 'none' }}
                   onClick={() => toggleSort('tvl')}
                 >
-                  Total Supplied <SortIcon col="tvl" />
+                  Total Supplied {sortIcon('tvl')}
                 </th>
                 <th style={{ paddingTop: 16 }}>LLTV</th>
                 <th style={{ paddingTop: 16 }}>Oracle</th>

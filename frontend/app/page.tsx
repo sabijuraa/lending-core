@@ -28,7 +28,7 @@ export default function HomePage() {
   const { address, isConnected } = useAccount()
   const [stats, setStats] = useState<ProtocolStats | null>(null)
   const [markets, setMarkets] = useState<MarketView[]>([])
-  const [positions, setPositions] = useState<PositionView[]>([])
+  const [owned, setOwned] = useState<{ owner: string; positions: PositionView[] } | null>(null)
 
   useEffect(() => {
     data.getStats().then(setStats)
@@ -37,11 +37,11 @@ export default function HomePage() {
 
   useEffect(() => {
     if (isConnected && address) {
-      data.getPositions(address).then(setPositions)
-    } else {
-      setPositions([])
+      data.getPositions(address).then(positions => setOwned({ owner: address, positions }))
     }
   }, [data, isConnected, address])
+
+  const positions = isConnected && address && owned?.owner === address ? owned.positions : []
 
   return (
     <>
@@ -116,7 +116,7 @@ function HeroSection({ stats }: { stats: ProtocolStats | null }) {
                 marginBottom: 28,
               }}
             >
-              Each market pairs one loan asset with one collateral, one oracle, and one rate curve. Your position is never touched by someone else's bad oracle.
+              Each market pairs one loan asset with one collateral, one oracle, and one rate curve. Your position is never touched by someone else&apos;s bad oracle.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 8 }}
