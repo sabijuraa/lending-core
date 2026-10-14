@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
@@ -26,6 +26,8 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  const connectWallet = () => connect({ connector: injected() }, { onSuccess: () => router.push('/dashboard') })
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
@@ -94,18 +96,13 @@ export function Navbar() {
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="lc-network hide-mobile">
-            <span className="lc-dot" style={{ color: 'var(--positive)' }} />
-            Base Sepolia
-          </span>
-
           {isConnected && address ? (
             <button onClick={() => disconnect()} className="btn btn-secondary lc-nav-btn" title="Disconnect">
               <span className="lc-dot" style={{ color: 'var(--positive)' }} />
               {truncateAddress(address)}
             </button>
           ) : (
-            <button onClick={() => connect({ connector: injected() })} className="btn btn-primary lc-nav-btn">
+            <button onClick={connectWallet} className="btn btn-primary lc-nav-btn">
               Connect Wallet
             </button>
           )}
@@ -173,10 +170,6 @@ export function Navbar() {
               transition={{ delay: 0.25 }}
               style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 12 }}
             >
-              <span className="lc-network" style={{ alignSelf: 'flex-start' }}>
-                <span className="lc-dot" style={{ color: 'var(--positive)' }} />
-                Base Sepolia
-              </span>
               {isConnected && address ? (
                 <button
                   onClick={() => { disconnect(); setMobileOpen(false) }}
@@ -188,7 +181,7 @@ export function Navbar() {
               ) : (
                 <button
                   className="btn btn-primary"
-                  onClick={() => { connect({ connector: injected() }); setMobileOpen(false) }}
+                  onClick={() => { connectWallet(); setMobileOpen(false) }}
                   style={{ width: '100%', fontSize: 15, padding: '14px 24px' }}
                 >
                   <Wallet size={16} weight="bold" />
@@ -223,19 +216,6 @@ export function Navbar() {
           height: 2px;
           border-radius: 1px;
           background: var(--positive);
-        }
-        .lc-network {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 7px 14px;
-          font-size: 13px;
-          font-weight: 500;
-          color: var(--text-2);
-          background: var(--surface);
-          border: 1px solid var(--border-default);
-          border-radius: 999px;
-          white-space: nowrap;
         }
         .lc-nav-btn { padding: 9px 18px; font-size: 13px; }
         @media (max-width: 1024px) {
