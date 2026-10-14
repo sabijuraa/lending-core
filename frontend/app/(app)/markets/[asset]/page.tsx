@@ -1,20 +1,13 @@
 'use client'
-import { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { useConnect, useReadContract } from 'wagmi'
-import { injected } from 'wagmi/connectors'
-import { formatUnits, type Address } from 'viem'
-import { ArrowLeft, Info, Wallet, HandCoins, Vault, Drop, ChartLineUp, ShieldCheck } from '@phosphor-icons/react'
+import { Info, HandCoins, Vault, Drop, ChartLineUp, ShieldCheck } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
 import { useData } from '@/providers/provider'
-import { healthFactor, type MarketView } from '@/providers/types'
+import type { MarketView } from '@/providers/types'
 import { useAsync } from '@/lib/use-async'
-import { useAccountId } from '@/lib/use-account-id'
-import { ADDRESSES, isDeployed } from '@/lib/addresses'
-import TestTokenAbi from '@/lib/abi/TestToken.json'
-import { TxButton } from '@/components/market/TxButton'
+import { LcActionPanel } from '@/components/market/LcActionPanel'
 import { LcRateCurve } from '@/components/market/LcRateCurve'
 import { LcCardTitle, LcPill, LcFootnote, lcPanel, marketStatus } from '@/components/market/LcUi'
 import { CountUp, LcStoryBand } from '@/components/market/LcStory'
@@ -31,10 +24,9 @@ export default function MarketDetailPage() {
   const m = market.data
 
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 0 96px' }}>
+    <div style={{ padding: '8px 0 64px', overflowX: 'clip' }}>
       <div className="section-container">
         <Link href="/markets" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-3)', textDecoration: 'none', marginBottom: 20 }}>
-          <ArrowLeft size={13} />
           All markets
         </Link>
 
@@ -47,7 +39,6 @@ export default function MarketDetailPage() {
         {m && (
           <MarketBody
             m={m}
-            illustrative={data.source === 'mock'}
             onChanged={() => { market.reload(); activity.reload() }}
             activity={
               <ActivityCard loading={activity.loading} error={activity.error} reload={activity.reload} items={activity.data} />
@@ -59,7 +50,7 @@ export default function MarketDetailPage() {
   )
 }
 
-function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; illustrative: boolean; onChanged: () => void; activity: React.ReactNode }) {
+function MarketBody({ m, onChanged, activity }: { m: MarketView; onChanged: () => void; activity: React.ReactNode }) {
   const st = marketStatus(m.oracleLastUpdate, m.maxStaleness)
   const liquidity = m.totalSupplied - m.totalBorrowed
 
@@ -92,13 +83,6 @@ function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; i
           {m.collateralSymbol} / {m.loanSymbol}
         </h1>
         <LcPill tone={st.tone}>{st.label}</LcPill>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-2)',
-          padding: '5px 11px', border: '1px solid var(--border-default)', borderRadius: 999, background: 'var(--surface)',
-        }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--positive)' }} />
-          Base Sepolia
-        </span>
       </motion.header>
       <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: 28 }}>
         Borrow {m.loanSymbol} against {m.collateralName}. This market has its own oracle and its own risk boundary.
@@ -145,8 +129,8 @@ function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; i
 
         <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.2 }}
           style={{ ...lcPanel, padding: 24 }}>
-          <LcCardTitle>Supply / Borrow</LcCardTitle>
-          <ActionPanel m={m} onChanged={onChanged} />
+          <LcCardTitle>Manage your position</LcCardTitle>
+          <LcActionPanel m={m} onChanged={onChanged} />
         </motion.section>
       </div>
 
@@ -156,9 +140,7 @@ function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; i
 
       <div style={{ marginBottom: 20 }}>
         <LcFootnote icon={<Info size={16} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}>
-          {illustrative
-            ? 'Rates and parameters are illustrative. Demo balances reset when you reload.'
-            : 'Rates and parameters are read live from the Base Sepolia testnet.'}
+          Rates move with utilization every block. Market parameters are fixed when the market is created and can never change.
         </LcFootnote>
       </div>
 
@@ -172,145 +154,6 @@ function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; i
         }
       `}</style>
     </>
-  )
-}
-
-const erc20 = TestTokenAbi as never
-
-function ActionPanel({ m, onChanged }: { m: MarketView; onChanged: () => void }) {
-  const data = useData()
-  const { account } = useAccountId()
-  const { connect } = useConnect()
-  const [tab, setTab] = useState<'supply' | 'borrow'>('supply')
-  const [amount, setAmount] = useState('')
-  const positions = useAsync(() => (account ? data.getPositions(account) : Promise.resolve([])), [account, data])
-  const pos = positions.data?.find((p) => p.slug === m.slug)
-
-  const wallet = useReadContract({
-    address: ADDRESSES.USDC as Address,
-    abi: erc20,
-    functionName: 'balanceOf',
-    args: [account as Address],
-    query: { enabled: isDeployed && data.source === 'chain' && !!account && account.startsWith('0x') },
-  })
-  const rawBalance: unknown = (wallet as { data?: unknown }).data
-  const walletBalance = typeof rawBalance === 'bigint' ? Number(formatUnits(rawBalance, 6)) : null
-
-  const liquidity = Math.max(0, m.totalSupplied - m.totalBorrowed)
-  const collateral = pos?.collateral ?? 0
-  const debt = pos?.borrowed ?? 0
-  const borrowLimit = Math.max(0, Math.min(liquidity, collateral * m.oraclePrice * m.lltv - debt))
-  const max = tab === 'supply' ? walletBalance : borrowLimit
-
-  const value = Number(amount)
-  const valid = Number.isFinite(value) && value > 0
-  const hfAfter = healthFactor(collateral, m.oraclePrice, m.lltv, debt + (valid ? value : 0))
-
-  function refresh() {
-    setAmount('')
-    positions.reload()
-    onChanged()
-  }
-
-  function switchTab(t: 'supply' | 'borrow') {
-    setTab(t)
-    setAmount('')
-  }
-
-  return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      <div role="tablist" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4, background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--r-md)' }}>
-        {(['supply', 'borrow'] as const).map((t) => (
-          <button
-            key={t}
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => switchTab(t)}
-            style={{
-              position: 'relative', padding: '9px 0', fontSize: 13, fontWeight: tab === t ? 600 : 500, textTransform: 'capitalize', cursor: 'pointer',
-              color: tab === t ? 'var(--accent)' : 'var(--text-3)',
-              background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
-              transition: 'color 150ms ease',
-            }}
-          >
-            {tab === t && (
-              <motion.span
-                layoutId="lc-action-tab"
-                transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                style={{ position: 'absolute', inset: 0, background: 'var(--surface)', border: '1px solid var(--accent-border)', borderRadius: 'var(--r-sm)' }}
-              />
-            )}
-            <span style={{ position: 'relative' }}>{t}</span>
-          </button>
-        ))}
-      </div>
-
-      <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--r-md)', background: 'var(--surface)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, color: 'var(--text-1)' }}>
-            <TokenLogo symbol={m.loanSymbol} size={20} />
-            {m.loanSymbol}
-          </span>
-          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-            {tab === 'supply'
-              ? walletBalance !== null ? `Wallet ${formatNumber(walletBalance)}` : 'Earn the supply rate'
-              : `Limit ${formatNumber(borrowLimit)}`}
-          </span>
-        </div>
-        <input
-          inputMode="decimal"
-          aria-label={`Amount in ${m.loanSymbol}`}
-          value={amount}
-          onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
-          placeholder="0.00"
-          style={{ width: '100%', padding: '12px 14px', fontSize: 20, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)', background: 'transparent', border: 'none', outline: 'none' }}
-        />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
-        {[25, 50, 75, 100].map((p) => (
-          <button
-            key={p}
-            disabled={!max}
-            onClick={() => max && setAmount(String(Math.floor(max * p) / 100))}
-            title={!max ? (tab === 'supply' ? 'Wallet balance is not available here' : 'Post collateral to set a borrow limit') : undefined}
-            style={{
-              padding: '8px 0', fontSize: 12, fontWeight: 500, borderRadius: 'var(--r-sm)',
-              border: '1px solid var(--border-default)', background: 'var(--surface-2)', color: 'var(--text-2)',
-              cursor: max ? 'pointer' : 'not-allowed', opacity: max ? 1 : 0.55,
-            }}
-          >
-            {p}%
-          </button>
-        ))}
-      </div>
-
-      {tab === 'borrow' && account && (
-        <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', justifyContent: 'space-between' }}>
-          <span>{formatNumber(collateral, 4)} {m.collateralSymbol} posted</span>
-          <span>
-            Health factor after{' '}
-            <strong style={{ color: hfAfter < 1 ? 'var(--danger)' : hfAfter < 1.5 ? 'var(--warning)' : 'var(--positive)', fontWeight: 600 }}>
-              {Number.isFinite(hfAfter) ? hfAfter.toFixed(2) : 'no debt'}
-            </strong>
-          </span>
-        </div>
-      )}
-
-      {!account ? (
-        <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} onClick={() => connect({ connector: injected() })}>
-          <Wallet size={15} /> Connect Wallet
-        </button>
-      ) : tab === 'supply' ? (
-        <TxButton label={`Supply ${m.loanSymbol}`} disabled={!valid} run={() => data.supply(m.slug, value, account)} onDone={refresh} />
-      ) : collateral <= 0 ? (
-        <Link href={`/borrow/${m.slug}`} className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }}>
-          Post {m.collateralSymbol} collateral to borrow
-        </Link>
-      ) : (
-        <TxButton label={`Borrow ${m.loanSymbol}`} disabled={!valid || hfAfter < 1} run={() => data.borrow(m.slug, value, account)} onDone={refresh} />
-      )}
-    </div>
   )
 }
 

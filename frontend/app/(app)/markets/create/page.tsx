@@ -1,29 +1,31 @@
 'use client'
 import { useState } from 'react'
+import { isAddress, zeroAddress } from 'viem'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, Info, Warning, CheckCircle, LockSimple, Drop, Vault, HandCoins, Code } from '@phosphor-icons/react'
+import { Warning, CheckCircle, LockSimple, Drop, Vault, HandCoins, Code } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
-import { LcCardTitle, LcFootnote, lcPanel } from '@/components/market/LcUi'
+import { LcCardTitle, lcPanel } from '@/components/market/LcUi'
+import { TxButton } from '@/components/market/TxButton'
+import { ADDRESSES } from '@/lib/addresses'
+import { useData } from '@/providers/provider'
+import { useAccountId } from '@/lib/use-account-id'
 import { LcStoryBand, LcBandStep, LcHelpCard, LcSectionHead } from '@/components/market/LcStory'
 import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
 
+/** A known address, or empty when it is not configured for this network. */
+const known = (a: string) => (a && a.toLowerCase() !== zeroAddress ? a : '')
+
 const COLLATERALS = [
-  { symbol: 'WETH', name: 'Wrapped Ether' },
-  { symbol: 'WBTC', name: 'Wrapped Bitcoin' },
-  { symbol: 'wstETH', name: 'Wrapped staked Ether' },
-  { symbol: 'LINK', name: 'Chainlink' },
+  { symbol: 'WETH', name: 'Wrapped Ether', address: known(ADDRESSES.WETH), oracle: known(ADDRESSES.WETHOracle) },
+  { symbol: 'WBTC', name: 'Wrapped Bitcoin', address: known(ADDRESSES.WBTC), oracle: known(ADDRESSES.WBTCOracle) },
 ]
 
 const LOANS = [
-  { symbol: 'USDC', name: 'USD Coin' },
-  { symbol: 'DAI', name: 'Dai' },
+  { symbol: 'USDC', name: 'USD Coin', address: known(ADDRESSES.USDC) },
 ]
 
-const ORACLES = [
-  { id: 'chainlink', name: 'Chainlink feed', desc: 'A Chainlink price feed wrapped in the lending-core oracle adapter' },
-  { id: 'custom', name: 'Your own oracle', desc: 'Any contract that reports a price and the time it was last updated' },
-]
+const CUSTOM = 'custom'
 
 const STALENESS = [
   { value: 3600, label: '1 hour' },
@@ -34,22 +36,50 @@ const STALENESS = [
 const EASE = [0.16, 1, 0.3, 1] as const
 
 export default function CreateMarketPage() {
+  const data = useData()
+  const { account } = useAccountId()
   const [collateral, setCollateral] = useState('')
+  const [collateralAddr, setCollateralAddr] = useState('')
   const [loan, setLoan] = useState('')
-  const [oracle, setOracle] = useState('chainlink')
+  const [loanAddr, setLoanAddr] = useState('')
+  const [oracleAddr, setOracleAddr] = useState('')
+  const [irmAddr, setIrmAddr] = useState(known(ADDRESSES.KinkedRateModel))
   const [staleness, setStaleness] = useState(3600)
   const [lltv, setLltv] = useState(80)
   const [bonus, setBonus] = useState(5)
   const [reviewed, setReviewed] = useState(false)
+  const [created, setCreated] = useState(false)
 
-  const ready = Boolean(collateral && loan)
-  const touch = <T,>(set: (v: T) => void) => (v: T) => { set(v); setReviewed(false) }
+  const touch = <T,>(set: (v: T) => void) => (v: T) => { set(v); setReviewed(false); setCreated(false) }
+
+  const pickCollateral = (sym: string) => {
+    touch(setCollateral)(sym)
+    const t = COLLATERALS.find((c) => c.symbol === sym)
+    setCollateralAddr(t?.address ?? '')
+    if (t) setOracleAddr(t.oracle)
+  }
+  const pickLoan = (sym: string) => {
+    touch(setLoan)(sym)
+    setLoanAddr(LOANS.find((c) => c.symbol === sym)?.address ?? '')
+  }
+
+  const valid = (a: string) => isAddress(a) && a.toLowerCase() !== zeroAddress
+  const errors = {
+    collateral: !collateral ? 'Choose the collateral.' : !valid(collateralAddr) ? 'Enter a valid collateral token address.' : '',
+    loan: !loan ? 'Choose the loan asset.' : !valid(loanAddr) ? 'Enter a valid loan token address.' : '',
+    same: valid(collateralAddr) && collateralAddr.toLowerCase() === loanAddr.toLowerCase() ? 'Collateral and loan asset must be different tokens.' : '',
+    oracle: !valid(oracleAddr) ? 'Enter the price feed contract address.' : '',
+    irm: !valid(irmAddr) ? 'Enter the interest rate model address.' : '',
+  }
+  const firstError = Object.values(errors).find(Boolean) ?? ''
+  const ready = !firstError
+  const collateralLabel = collateral === CUSTOM ? 'Custom token' : collateral
+  const loanLabel = loan === CUSTOM ? 'Custom token' : loan
 
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 0 96px' }}>
+    <div style={{ padding: '8px 0 64px', overflowX: 'clip' }}>
       <div className="section-container">
         <Link href="/markets" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-3)', textDecoration: 'none', marginBottom: 20 }}>
-          <ArrowLeft size={13} />
           All markets
         </Link>
 
@@ -70,32 +100,36 @@ export default function CreateMarketPage() {
             <Field step={1} label="Collateral" hint="What borrowers put up to secure their loans.">
               <div className="lc-token-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
                 {COLLATERALS.map((t) => (
-                  <TokenChoice key={t.symbol} {...t} selected={collateral === t.symbol} onClick={() => touch(setCollateral)(t.symbol)} />
+                  <TokenChoice key={t.symbol} symbol={t.symbol} name={t.name} selected={collateral === t.symbol} onClick={() => pickCollateral(t.symbol)} />
                 ))}
+                <TokenChoice symbol="?" name="Paste a token address" label="Other token" selected={collateral === CUSTOM} onClick={() => pickCollateral(CUSTOM)} />
               </div>
+              {collateral && (
+                <AddressInput label="Collateral token address" value={collateralAddr} onChange={touch(setCollateralAddr)} invalid={!!collateralAddr && !valid(collateralAddr)} />
+              )}
             </Field>
 
             <Field step={2} label="Loan asset" hint="What lenders deposit and borrowers receive.">
               <div className="lc-token-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
                 {LOANS.map((t) => (
-                  <TokenChoice key={t.symbol} {...t} selected={loan === t.symbol} onClick={() => touch(setLoan)(t.symbol)} />
+                  <TokenChoice key={t.symbol} symbol={t.symbol} name={t.name} selected={loan === t.symbol} onClick={() => pickLoan(t.symbol)} />
                 ))}
+                <TokenChoice symbol="?" name="Paste a token address" label="Other token" selected={loan === CUSTOM} onClick={() => pickLoan(CUSTOM)} />
               </div>
+              {loan && (
+                <AddressInput label="Loan token address" value={loanAddr} onChange={touch(setLoanAddr)} invalid={!!loanAddr && !valid(loanAddr)} />
+              )}
             </Field>
 
             <Field step={3} label="Price feed" hint="The one source this market trusts to value the collateral.">
-              <div style={{ display: 'grid', gap: 10 }}>
-                {ORACLES.map((o) => (
-                  <button key={o.id} type="button" onClick={() => touch(setOracle)(o.id)} className="lc-choice" data-selected={oracle === o.id}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: '14px 16px', textAlign: 'left' }}>
-                    <span>
-                      <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{o.name}</span>
-                      <span style={{ display: 'block', fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>{o.desc}</span>
-                    </span>
-                    <Radio on={oracle === o.id} />
-                  </button>
-                ))}
-              </div>
+              <AddressInput
+                label="Price feed address"
+                hint={COLLATERALS.some((c) => c.symbol === collateral && c.oracle) ? 'Prefilled with the lending-core adapter for this collateral.' : 'A contract that reports the collateral price and when it was last updated.'}
+                value={oracleAddr}
+                onChange={touch(setOracleAddr)}
+                invalid={!!oracleAddr && !valid(oracleAddr)}
+                first
+              />
               <div style={{ marginTop: 14 }}>
                 <div style={{ fontSize: 12, color: 'var(--text-3)', marginBottom: 8 }}>Pause when the price is older than</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -127,20 +161,66 @@ export default function CreateMarketPage() {
               <Slider value={bonus} min={1} max={20} onChange={touch(setBonus)} color="var(--warning)" left="1%" right="20% cap" />
             </Field>
 
+            <Field step={6} label="Interest rate model" hint="The contract that sets borrow rates from utilization. Use the standard kinked rate model unless you have audited your own.">
+              <AddressInput label="Rate model address" value={irmAddr} onChange={touch(setIrmAddr)} invalid={!!irmAddr && !valid(irmAddr)} first />
+            </Field>
+
             <div style={{ display: 'grid', gap: 12 }}>
-              <button type="button" className="btn btn-primary btn-lg" disabled={!ready} onClick={() => setReviewed(true)}
-                style={{ width: '100%', justifyContent: 'center', opacity: ready ? 1 : 0.5, cursor: ready ? 'pointer' : 'not-allowed' }}>
-                Review market <ArrowRight size={14} />
-              </button>
-              <AnimatePresence>
-                {reviewed && (
-                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
-                    <LcFootnote icon={<Info size={16} style={{ color: 'var(--accent)', flexShrink: 0 }} />}>
-                      Creating markets from the app is not open yet on this testnet build. The same choices can be sent to createMarket on the LendingCore contract today, the developer docs show how.
-                    </LcFootnote>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {!reviewed ? (
+                <>
+                  <button type="button" className="btn btn-primary btn-lg" disabled={!ready} onClick={() => setReviewed(true)}
+                    style={{ width: '100%', justifyContent: 'center' }}>
+                    Review market
+                  </button>
+                  {firstError && (collateral || loan) && <p style={{ fontSize: 12.5, color: 'var(--text-3)', textAlign: 'center' }}>{firstError}</p>}
+                </>
+              ) : (
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+                  style={{ border: '1px solid var(--accent-border)', background: 'var(--accent-dim)', borderRadius: 'var(--r-md)', padding: 18, display: 'grid', gap: 14 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>Review and create</div>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {[
+                      ['Collateral', `${collateralLabel} ${short(collateralAddr)}`],
+                      ['Loan asset', `${loanLabel} ${short(loanAddr)}`],
+                      ['Price feed', short(oracleAddr)],
+                      ['Rate model', short(irmAddr)],
+                      ['Liquidation LTV', `${lltv}%`],
+                      ['Liquidation bonus', `${bonus}%`],
+                      ['Max price age', STALENESS.find((x) => x.value === staleness)?.label ?? ''],
+                    ].map(([k, v]) => (
+                      <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
+                        <span style={{ color: 'var(--text-3)' }}>{k}</span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, color: 'var(--text-1)', textAlign: 'right' }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5 }}>These settings are permanent once the transaction confirms.</p>
+                  {created ? (
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                      <Link href="/markets" className="btn btn-primary">View markets</Link>
+                      <button type="button" className="btn btn-secondary" onClick={() => { setReviewed(false); setCreated(false) }}>Create another</button>
+                    </div>
+                  ) : (
+                    <>
+                      <TxButton
+                        label="Create market"
+                        disabled={!ready}
+                        run={() => data.createMarket({
+                          loanToken: loanAddr as `0x${string}`,
+                          collateralToken: collateralAddr as `0x${string}`,
+                          oracle: oracleAddr as `0x${string}`,
+                          irm: irmAddr as `0x${string}`,
+                          lltv: lltv / 100,
+                          liquidationBonus: bonus / 100,
+                          maxStaleness: staleness,
+                        }, account ?? '')}
+                        onDone={() => setCreated(true)}
+                      />
+                      <button type="button" className="btn btn-ghost" style={{ justifyContent: 'center' }} onClick={() => setReviewed(false)}>Edit settings</button>
+                    </>
+                  )}
+                </motion.div>
+              )}
             </div>
           </motion.div>
 
@@ -154,22 +234,22 @@ export default function CreateMarketPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, minHeight: 40 }}>
                   <AnimatePresence mode="wait">
                     <motion.span key={collateral || 'none'} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }} transition={{ duration: 0.2 }}>
-                      {collateral ? <TokenLogo symbol={collateral} size={36} /> : <Placeholder />}
+                      {collateral && collateral !== CUSTOM ? <TokenLogo symbol={collateral} size={36} /> : <Placeholder />}
                     </motion.span>
                   </AnimatePresence>
                   <span style={{ fontSize: 22, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
-                    {collateral || 'Collateral'} / {loan || 'Loan'}
+                    {collateralLabel || 'Collateral'} / {loanLabel || 'Loan'}
                   </span>
                 </div>
                 <div style={{ display: 'grid', gap: 10 }}>
                   <PreviewLine icon={<Vault size={16} />}>
-                    Every $100 of {collateral || 'collateral'} can back up to <b>${lltv}</b> of {loan || 'debt'}.
+                    Every $100 of {collateralLabel || 'collateral'} can back up to <b>${lltv}</b> of {loanLabel || 'debt'}.
                   </PreviewLine>
                   <PreviewLine icon={<HandCoins size={16} />}>
                     Liquidators earn <b>{bonus}%</b> on top of the debt they repay.
                   </PreviewLine>
                   <PreviewLine icon={<Drop size={16} />}>
-                    Uses a {oracle === 'chainlink' ? 'Chainlink feed' : 'custom oracle'} and pauses if the price is older than <b>{STALENESS.find((s) => s.value === staleness)?.label}</b>.
+                    Trusts one price feed and pauses if the price is older than <b>{STALENESS.find((s) => s.value === staleness)?.label}</b>.
                   </PreviewLine>
                   <PreviewLine icon={<LockSimple size={16} />}>
                     These rules are locked forever the moment the market opens.
@@ -182,7 +262,7 @@ export default function CreateMarketPage() {
               {[
                 'The market id is a fingerprint of these exact settings, so a duplicate cannot be created.',
                 'Lenders decide for themselves whether your settings are safe enough to deposit.',
-                'On this testnet every market uses the same rate curve, low until 80% utilization and steep after.',
+                'The standard rate model keeps borrowing cheap until 80% utilization and steep after, which pulls lenders back in.',
               ].map((t) => (
                 <div key={t} style={{ display: 'flex', gap: 10, padding: '8px 0', fontSize: 13, lineHeight: 1.55, color: 'var(--text-2)' }}>
                   <CheckCircle size={16} weight="fill" style={{ color: 'var(--positive)', flexShrink: 0, marginTop: 2 }} />
@@ -229,7 +309,7 @@ export default function CreateMarketPage() {
           </Stagger>
           <Reveal style={{ marginTop: 20 }}>
             <Link href="/docs?tab=developers" className="btn btn-secondary" style={{ fontSize: 13, padding: '10px 18px' }}>
-              Developer guide to createMarket <ArrowRight size={13} />
+              Developer guide to createMarket
             </Link>
           </Reveal>
         </div>
@@ -276,13 +356,35 @@ function Field({ step, label, hint, children }: { step: number; label: string; h
   )
 }
 
-function TokenChoice({ symbol, name, selected, onClick }: { symbol: string; name: string; selected: boolean; onClick: () => void }) {
+function short(a: string) {
+  return a ? `${a.slice(0, 6)}...${a.slice(-4)}` : ''
+}
+
+function AddressInput({ label, hint, value, onChange, invalid, first }: { label: string; hint?: string; value: string; onChange: (v: string) => void; invalid: boolean; first?: boolean }) {
+  return (
+    <label style={{ display: 'block', marginTop: first ? 0 : 12 }}>
+      <span style={{ display: 'block', fontSize: 12, color: 'var(--text-3)', marginBottom: 6 }}>{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value.trim())}
+        placeholder="0x..."
+        spellCheck={false}
+        className="input"
+        style={{ width: '100%', fontFamily: 'var(--font-mono)', fontSize: 13, borderColor: invalid ? 'var(--danger)' : undefined }}
+      />
+      {invalid && <span style={{ display: 'block', fontSize: 12, color: 'var(--danger)', marginTop: 6 }}>That is not a valid address.</span>}
+      {hint && !invalid && <span style={{ display: 'block', fontSize: 12, color: 'var(--text-4)', marginTop: 6 }}>{hint}</span>}
+    </label>
+  )
+}
+
+function TokenChoice({ symbol, name, label, selected, onClick }: { symbol: string; name: string; label?: string; selected: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="lc-choice" data-selected={selected}
       style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', textAlign: 'left' }}>
-      <TokenLogo symbol={symbol} size={30} />
+      {symbol === '?' ? <Placeholder size={30} dark={false} /> : <TokenLogo symbol={symbol} size={30} />}
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{symbol}</span>
+        <span style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>{label ?? symbol}</span>
         <span style={{ display: 'block', fontSize: 11.5, color: 'var(--text-3)' }}>{name}</span>
       </span>
       <Radio on={selected} />
@@ -337,6 +439,6 @@ function PreviewLine({ icon, children }: { icon: React.ReactNode; children: Reac
   )
 }
 
-function Placeholder() {
-  return <span style={{ display: 'inline-block', width: 36, height: 36, borderRadius: '50%', border: '1.5px dashed rgba(255,255,255,0.3)' }} />
+function Placeholder({ size = 36, dark = true }: { size?: number; dark?: boolean }) {
+  return <span style={{ display: 'inline-block', flexShrink: 0, width: size, height: size, borderRadius: '50%', border: `1.5px dashed ${dark ? 'rgba(255,255,255,0.3)' : 'var(--border-strong)'}` }} />
 }

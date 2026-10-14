@@ -1,13 +1,14 @@
 'use client'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useConnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
-import { Wallet, ArrowRight, CaretRight, ArrowDown, ArrowUp, ArrowsClockwise, Lightning, ShieldCheck, HandCoins, Vault, Heartbeat, BookOpen } from '@phosphor-icons/react'
+import { Wallet, ArrowDown, ArrowUp, ArrowsClockwise, Lightning, ShieldCheck, HandCoins, Vault, Heartbeat, BookOpen } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
 import { LcHealthArc } from '@/components/portfolio/LcHealthArc'
 import { LcCardTitle, LcPill, lcPanel, lcTh, lcTd } from '@/components/market/LcUi'
+import { LcActionPanel } from '@/components/market/LcActionPanel'
 import { CountUp, LcRow, LcStoryBand, LcSectionHead } from '@/components/market/LcStory'
 import { Stagger, StaggerItem } from '@/components/ui/Reveal'
 import { useData } from '@/providers/provider'
@@ -50,7 +51,7 @@ export default function PortfolioPage() {
             </p>
           </div>
           <button className="btn btn-primary" onClick={() => connect({ connector: injected() })}>
-            <Wallet size={14} /> Connect Wallet
+            Connect wallet
           </button>
           <Link href="/markets" style={{ fontSize: 13, color: 'var(--text-3)' }}>Or browse the markets first</Link>
         </motion.div>
@@ -64,13 +65,14 @@ export default function PortfolioPage() {
 function PortfolioBody({ account }: { account: string }) {
   const data = useData()
   const [tab, setTab] = useState<'positions' | 'history'>('positions')
+  const [open, setOpen] = useState<string | null>(null)
   const positions = useAsync(() => data.getPositions(account), [account, data])
   const markets = useAsync(() => data.getMarkets(), [data])
-  const activity = useAsync(() => data.getActivity(), [data])
+  const activity = useAsync(() => data.getActivity(undefined, account), [account, data])
 
   const mk = (slug: string): MarketView | undefined => markets.data?.find(m => m.slug === slug)
   const list: PositionView[] = positions.data ?? []
-  const mine: ActivityItem[] = (activity.data ?? []).filter(a => a.account.toLowerCase() === account.toLowerCase())
+  const mine: ActivityItem[] = activity.data ?? []
 
   const collateralValue = list.reduce((s, p) => s + p.collateral * (mk(p.slug)?.oraclePrice ?? 0), 0)
   const totalDebt = list.reduce((s, p) => s + p.borrowed, 0)
@@ -78,7 +80,6 @@ function PortfolioBody({ account }: { account: string }) {
   const net = totalSupplied + collateralValue - totalDebt
   const indebted = list.filter(p => p.borrowed > 0)
   const lowest = indebted.length ? Math.min(...indebted.map(p => p.healthFactor)) : Infinity
-  const illustrative = data.source === 'mock'
 
   const stat = (label: string, value: number, note?: string) => (
     <div>
@@ -91,7 +92,7 @@ function PortfolioBody({ account }: { account: string }) {
   )
 
   return (
-    <div style={{ minHeight: '100vh', padding: '48px 0 96px' }}>
+    <div style={{ padding: '8px 0 64px', overflowX: 'clip' }}>
       <div className="section-container">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 'clamp(32px, 4.5vw, 44px)', fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--text-1)', marginBottom: 8 }}>
@@ -109,7 +110,7 @@ function PortfolioBody({ account }: { account: string }) {
           style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr 1fr', gap: 16, marginBottom: 28 }}
         >
           <div style={{ ...lcPanel, padding: 28, display: 'flex', alignItems: 'center' }}>
-            {stat('Total Net Position', net, illustrative ? 'Illustrative' : undefined)}
+            {stat('Total Net Position', net, 'Supplied plus collateral, minus debt')}
           </div>
           <div style={{ ...lcPanel, padding: '24px 16px 16px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <LcHealthArc value={lowest} />
@@ -150,7 +151,7 @@ function PortfolioBody({ account }: { account: string }) {
                 </p>
                 {!positions.loading && (
                   <Link href="/markets" className="btn btn-primary" style={{ display: 'inline-flex' }}>
-                    Explore markets <ArrowRight size={14} weight="bold" />
+                    Explore markets
                   </Link>
                 )}
               </div>
@@ -175,7 +176,8 @@ function PortfolioBody({ account }: { account: string }) {
                       const col = m?.collateralSymbol ?? p.slug.toUpperCase()
                       const loan = m?.loanSymbol ?? ''
                       return (
-                        <LcRow key={p.slug} index={i} className="lc-pf-row">
+                        <Fragment key={p.slug}>
+                        <LcRow index={i} className="lc-pf-row">
                           <td style={{ ...lcTd, paddingLeft: 24 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                               <TokenLogo symbol={col} size={32} />
@@ -191,12 +193,48 @@ function PortfolioBody({ account }: { account: string }) {
                           <td style={lcTd}>{Number.isFinite(p.healthFactor) ? p.healthFactor.toFixed(2) : 'No debt'}</td>
                           <td style={lcTd}><LcPill tone={h.tone}>{h.label}</LcPill></td>
                           <td style={{ ...lcTd, paddingRight: 24, textAlign: 'right' }}>
-                            <Link href={`/markets/${p.slug}`} aria-label={`Manage ${col} position`}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--text-2)', textDecoration: 'none' }}>
-                              Manage <CaretRight size={12} />
-                            </Link>
+                            <button
+                              className={open === p.slug ? 'btn btn-primary' : 'btn btn-secondary'}
+                              aria-expanded={open === p.slug}
+                              aria-label={`Manage ${col} position`}
+                              onClick={() => setOpen(open === p.slug ? null : p.slug)}
+                              style={{ padding: '6px 14px', fontSize: 12.5 }}
+                            >
+                              {open === p.slug ? 'Close' : 'Manage'}
+                            </button>
                           </td>
                         </LcRow>
+                        <AnimatePresence initial={false}>
+                          {open === p.slug && m && (
+                            <tr>
+                              <td colSpan={7} style={{ padding: 0, borderBottom: '1px solid var(--border-subtle)' }}>
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                                  style={{ overflow: 'hidden', background: 'var(--surface-2)' }}
+                                >
+                                  <div className="lc-pf-manage" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.4fr)', gap: 24, padding: '20px 24px' }}>
+                                    <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-3)' }}>
+                                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>Manage {col} / {loan}</div>
+                                      Supply or withdraw {loan}, add or free up {col} collateral, borrow more or pay down your loan. Your health factor preview updates before you confirm.
+                                      <div style={{ marginTop: 12 }}>
+                                        <Link href={`/markets/${p.slug}`} style={{ color: 'var(--accent)', fontWeight: 500, fontSize: 13 }}>Open full market page</Link>
+                                      </div>
+                                    </div>
+                                    <LcActionPanel
+                                      m={m}
+                                      initialTab={p.borrowed > 0 ? 'repay' : p.supplied > 0 ? 'withdraw' : 'collateral'}
+                                      onChanged={() => { positions.reload(); markets.reload(); activity.reload() }}
+                                    />
+                                  </div>
+                                </motion.div>
+                              </td>
+                            </tr>
+                          )}
+                        </AnimatePresence>
+                        </Fragment>
                       )
                     })}
                   </tbody>
@@ -246,6 +284,7 @@ function PortfolioBody({ account }: { account: string }) {
         @media (max-width: 960px) {
           .lc-pf-top { grid-template-columns: 1fr !important; }
           .lc-pf-bottom { grid-template-columns: 1fr !important; }
+          .lc-pf-manage { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
@@ -348,8 +387,8 @@ function NextSteps({ hasPositions, hasDebt, hasSupply }: { hasPositions: boolean
               <span className="lc-icon-tile">{st.icon}</span>
               <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', letterSpacing: '-0.01em' }}>{st.title}</span>
               <span style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--text-3)', flex: 1 }}>{st.body}</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>
-                {st.cta} <ArrowRight size={13} className="lc-step-go" />
+              <span className="lc-step-go" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accent)' }}>
+                {st.cta}
               </span>
             </Link>
           </StaggerItem>

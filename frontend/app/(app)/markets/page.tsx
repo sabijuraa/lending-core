@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { MagnifyingGlass, CaretLeft, CaretRight, Info, Drop, ShieldCheck, ChartLineUp, Gauge, ArrowRight } from '@phosphor-icons/react'
+import { MagnifyingGlass, Info, Drop, ShieldCheck, ChartLineUp, Gauge } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
 import { LcPill, LcOracle, LcSelect, LcFootnote, lcPanel, lcTh, lcTd, marketStatus } from '@/components/market/LcUi'
 import { CountUp, LcRow, LcStoryBand, LcHelpCard, LcSectionHead } from '@/components/market/LcStory'
@@ -63,12 +63,11 @@ export default function MarketsPage() {
 
   const totalSupplied = markets.reduce((s, m) => s + m.totalSupplied, 0)
   const totalBorrowed = markets.reduce((s, m) => s + m.totalBorrowed, 0)
-  const illustrative = data.source === 'mock'
 
   const resetPage = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(0) }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '48px 0 96px' }}>
+    <div style={{ padding: '8px 0 64px', overflowX: 'clip' }}>
       <div className="section-container">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: 'clamp(36px, 5vw, 48px)', fontWeight: 600, letterSpacing: '-0.03em', color: 'var(--text-1)', lineHeight: 1.05, marginBottom: 10 }}>
@@ -89,8 +88,8 @@ export default function MarketsPage() {
         >
           {[
             { label: 'Active Markets', value: markets.length, fmt: (n: number) => String(Math.round(n)) },
-            { label: illustrative ? 'Total Supplied (Illustrative)' : 'Total Supplied', value: totalSupplied, fmt: (n: number) => formatUSD(n, true) },
-            { label: illustrative ? 'Total Borrowed (Illustrative)' : 'Total Borrowed', value: totalBorrowed, fmt: (n: number) => formatUSD(n, true) },
+            { label: 'Total Supplied', value: totalSupplied, fmt: (n: number) => formatUSD(n, true) },
+            { label: 'Total Borrowed', value: totalBorrowed, fmt: (n: number) => formatUSD(n, true) },
           ].map((s, i) => (
             <div key={s.label} className="lc-summary-item" style={{
               paddingRight: 32,
@@ -239,24 +238,22 @@ export default function MarketsPage() {
             onClick={() => setPage(Math.max(0, current - 1))}
             disabled={current === 0}
             aria-label="Previous page"
-            style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: current === 0 ? 'default' : 'pointer', opacity: current === 0 ? 0.4 : 1 }}
+            style={{ height: 30, padding: '0 8px', fontSize: 12.5, fontFamily: 'inherit', border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: current === 0 ? 'default' : 'pointer', opacity: current === 0 ? 0.4 : 1 }}
           >
-            <CaretLeft size={13} />
+            Previous
           </button>
           <button
             onClick={() => setPage(Math.min(pages - 1, current + 1))}
             disabled={current >= pages - 1}
             aria-label="Next page"
-            style={{ width: 30, height: 30, border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: current >= pages - 1 ? 'default' : 'pointer', opacity: current >= pages - 1 ? 0.4 : 1 }}
+            style={{ height: 30, padding: '0 8px', fontSize: 12.5, fontFamily: 'inherit', border: 'none', background: 'transparent', color: 'var(--text-3)', cursor: current >= pages - 1 ? 'default' : 'pointer', opacity: current >= pages - 1 ? 0.4 : 1 }}
           >
-            <CaretRight size={13} />
+            Next
           </button>
         </div>
 
         <LcFootnote icon={<Info size={16} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}>
-          {illustrative
-            ? 'All data is illustrative and for the Base Sepolia testnet.'
-            : 'Rates and balances are read live from the Base Sepolia testnet.'}
+          Rates and balances update with every block. Supply and borrow rates move with each market&apos;s utilization.
         </LcFootnote>
 
         {/* What a market is */}
@@ -330,7 +327,7 @@ export default function MarketsPage() {
           </Stagger>
           <div style={{ marginTop: 20, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <Link href="/docs?tab=risk" className="btn btn-secondary" style={{ fontSize: 13, padding: '10px 18px' }}>
-              Read the risk guide <ArrowRight size={13} />
+              Read the risk guide
             </Link>
           </div>
         </div>

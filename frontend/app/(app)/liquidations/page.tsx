@@ -1,8 +1,12 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Link from 'next/link'
-import { ShieldCheck, CaretRight, Info, Lightning, Eye, Coins, Scales, Timer, Gauge } from '@phosphor-icons/react'
+import { ShieldCheck, Info, Eye, Coins, Scales, Timer, Gauge } from '@phosphor-icons/react'
+import { useConnect } from 'wagmi'
+import { injected } from 'wagmi/connectors'
+import { useAccountId } from '@/lib/use-account-id'
+import { useTx, TxStatus } from '@/components/market/TxButton'
 import { TokenPair } from '@/components/ui/TokenLogo'
 import { useData } from '@/providers/provider'
 import type { PositionView, MarketView } from '@/providers/types'
@@ -66,20 +70,26 @@ export default function LiquidationsPage() {
   const [healthFilter, setHealthFilter] = useState<HealthFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('profit')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const [simulated, setSimulated] = useState<string | null>(null)
+  const [confirmKey, setConfirmKey] = useState<string | null>(null)
+  const { account } = useAccountId()
+  const { connect, isPending: connecting } = useConnect()
+  const tx = useTx()
+  const [txKey, setTxKey] = useState<string | null>(null)
 
-  useEffect(() => {
-    Promise.all([
-      data.getLiquidatable(),
-      data.getMarkets(),
-      data.getActivity(),
-    ]).then(([liq, mkts, act]) => {
-      setAtRisk(liq)
-      setMarkets(mkts)
-      setActivity(act.filter(a => a.kind === 'liquidate'))
-      setLoading(false)
-    })
-  }, [data])
+  const load = useCallback(() => Promise.all([
+    data.getLiquidatable(),
+    data.getMarkets(),
+    data.getActivity(),
+  ]).then(([liq, mkts, act]) => {
+    setAtRisk(liq)
+    setMarkets(mkts)
+    setActivity(act.filter(a => a.kind === 'liquidate'))
+    setLoading(false)
+  }), [data])
+
+  useEffect(() => { load() }, [load])
+
+  const pick = (k: string) => { setSelectedKey(k); setConfirmKey(null); if (tx.phase !== 'pending') tx.reset() }
 
   const getMarket = (slug: string) => markets.find(m => m.slug === slug)
   const keyOf = (p: Row) => `${p.account}:${p.slug}`
@@ -109,7 +119,7 @@ export default function LiquidationsPage() {
   const selectedMarket = selected ? getMarket(selected.pos.slug) : undefined
 
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 0 96px' }}>
+    <div style={{ padding: '8px 0 64px', overflowX: 'clip' }}>
       <div className="section-container">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 24 }}>
@@ -155,6 +165,24 @@ export default function LiquidationsPage() {
 
         {!loading && (
           <>
+            <AnimatePresence>
+              {tx.phase === 'done' && txKey && !atRisk.some(p => keyOf(p) === txKey) && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="card"
+                  style={{ padding: '14px 18px', marginBottom: 14, borderColor: 'var(--accent-border)', background: 'var(--accent-dim)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
+                >
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--positive)', marginBottom: 2 }}>Liquidation confirmed</div>
+                    <TxStatus phase={tx.phase} error={tx.error} hash={tx.hash} />
+                  </div>
+                  <button className="btn btn-ghost" style={{ fontSize: 12 }} onClick={() => { tx.reset(); setTxKey(null) }}>Dismiss</button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Filters */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 14 }}>
               <select aria-label="Market" style={selectStyle} value={marketFilter} onChange={e => setMarketFilter(e.target.value)}>
@@ -202,7 +230,7 @@ export default function LiquidationsPage() {
                         const k = keyOf(pos)
                         const active = selected && keyOf(selected.pos) === k
                         return (
-                          <LcRow key={k} index={i} className="lc-liq-row" selected={!!active} onClick={() => { setSelectedKey(k); setSimulated(null) }} style={{ cursor: 'pointer' }}>
+                          <LcRow key={k} index={i} className="lc-liq-row" selected={!!active} onClick={() => pick(k)} style={{ cursor: 'pointer' }}>
                             <td style={{ paddingLeft: 20 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 {mkt && <TokenPair collateral={mkt.collateralSymbol} loan={mkt.loanSymbol} size={22} />}
@@ -215,11 +243,15 @@ export default function LiquidationsPage() {
                             <td style={mono}>{formatNumber(pos.collateral, 2)} {mkt?.collateralSymbol}</td>
                             <td style={mono}>{out ? formatPercent(out.bonus * 100, 1) : 'N/A'}</td>
                             <td style={{ ...mono, color: out && out.eligible ? 'var(--positive)' : 'var(--text-3)' }}>
-                              {out && out.eligible ? formatUSD(out.profit) : 'Not yet'}
+                              {out && out.eligible ? formatUSD(out.profit) : 'Not eligible'}
                             </td>
                             <td style={{ paddingRight: 20 }}>
-                              <button className="btn btn-ghost" style={{ height: 28, padding: '0 10px', fontSize: 12, gap: 2 }}>
-                                View <CaretRight size={11} weight="bold" />
+                              <button
+                                className={out && out.eligible ? 'btn btn-primary' : 'btn btn-ghost'}
+                                style={{ height: 28, padding: '0 12px', fontSize: 12 }}
+                                onClick={(e) => { e.stopPropagation(); pick(k); if (out && out.eligible) setConfirmKey(k) }}
+                              >
+                                {out && out.eligible ? 'Liquidate' : 'View'}
                               </button>
                             </td>
                           </LcRow>
@@ -282,7 +314,7 @@ export default function LiquidationsPage() {
                             { l: 'Repayable (max)', v: `${formatNumber(selected.out.repayable, 2)} ${selectedMarket?.loanSymbol ?? ''}` },
                             { l: 'Collateral Received', v: `${formatNumber(selected.out.collateralReceived, 4)} ${selectedMarket?.collateralSymbol ?? ''}` },
                             { l: 'Liquidation bonus', v: formatPercent(selected.out.bonus * 100, 1) },
-                            { l: 'Est. Gas cost', v: 'Shown in wallet' },
+                            { l: 'Network fee', v: 'Shown in your wallet' },
                           ].map(r => (
                             <div key={r.l} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
                               <span style={{ color: 'var(--text-3)' }}>{r.l}</span>
@@ -302,30 +334,36 @@ export default function LiquidationsPage() {
                     </div>
                   </div>
 
-                  <button
-                    className="btn btn-primary"
-                    style={{ width: '100%', justifyContent: 'center', marginTop: 22, height: 42 }}
-                    disabled={!selected.out}
-                    onClick={() => setSimulated(keyOf(selected.pos))}
-                  >
-                    <Lightning size={14} weight="bold" /> Simulate Transaction
-                  </button>
-
-                  <AnimatePresence>
-                  {simulated === keyOf(selected.pos) && selected.out && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25 }} style={{ overflow: 'hidden' }}>
-                    <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 'var(--r-sm)', background: selected.out.eligible ? 'var(--positive-dim)' : 'var(--warning-dim)', fontSize: 12, color: selected.out.eligible ? 'var(--positive)' : 'var(--warning)', lineHeight: 1.5 }}>
-                      {selected.out.eligible
-                        ? `Simulation passes. Repaying ${formatUSD(selected.out.repayable)} would seize ${formatNumber(selected.out.collateralReceived, 4)} ${selectedMarket?.collateralSymbol ?? ''} at the current oracle price.`
-                        : 'Simulation reverts. The health factor is still above 1, so this position cannot be liquidated yet.'}
-                    </div>
-                    </motion.div>
-                  )}
-                  </AnimatePresence>
+                  <LiquidateAction
+                    key={keyOf(selected.pos)}
+                    eligible={!!selected.out?.eligible}
+                    confirming={confirmKey === keyOf(selected.pos)}
+                    hasMarket={!!selected.out}
+                    account={account}
+                    connecting={connecting}
+                    onConnect={() => connect({ connector: injected() })}
+                    onReview={() => { tx.reset(); setConfirmKey(keyOf(selected.pos)) }}
+                    onCancel={() => setConfirmKey(null)}
+                    phase={txKey === keyOf(selected.pos) ? tx.phase : 'idle'}
+                    error={tx.error}
+                    hash={tx.hash}
+                    summary={selected.out && selectedMarket ? {
+                      repay: `${formatNumber(selected.out.repayable, 2)} ${selectedMarket.loanSymbol}`,
+                      receive: `${formatNumber(selected.out.collateralReceived, 4)} ${selectedMarket.collateralSymbol}`,
+                      receiveUsd: formatUSD(selected.out.collateralValue),
+                      profit: formatUSD(selected.out.profit),
+                    } : null}
+                    onConfirm={() => {
+                      if (!account) return
+                      const pos = selected.pos
+                      setTxKey(keyOf(pos))
+                      tx.send(() => data.liquidate(pos.slug, pos.account, account), () => { setConfirmKey(null); load() })
+                    }}
+                  />
 
                   <p style={{ display: 'flex', gap: 6, alignItems: 'flex-start', fontSize: 11, color: 'var(--text-4)', marginTop: 14, lineHeight: 1.5 }}>
                     <Info size={13} style={{ flexShrink: 0, marginTop: 1 }} />
-                    Values are estimates from the current oracle price and can change before your transaction is mined. Nothing is sent when you simulate.
+                    Amounts are estimates from the current oracle price. Interest and price moves can change them slightly before your transaction is included.
                   </p>
                 </motion.div>
               )}
@@ -412,7 +450,7 @@ export default function LiquidationsPage() {
             </StaggerItem>
             <StaggerItem>
               <LcHelpCard icon={<Timer size={18} />} title="Speed">
-                Other keepers watch the same positions. A simulation that passes now can revert a block later if someone gets there first.
+                Other keepers watch the same positions. A position that is eligible now can be closed by someone else a block later.
               </LcHelpCard>
             </StaggerItem>
           </Stagger>
@@ -431,5 +469,102 @@ export default function LiquidationsPage() {
         @media (max-width: 560px) { .lc-keeper-grid { grid-template-columns: 1fr !important; } }
       `}</style>
     </div>
+  )
+}
+
+type Summary = { repay: string; receive: string; receiveUsd: string; profit: string }
+
+/** Review, confirm and track one liquidation. */
+function LiquidateAction({
+  eligible, confirming, hasMarket, account, connecting, onConnect, onReview, onCancel, onConfirm, summary, phase, error, hash,
+}: {
+  eligible: boolean
+  confirming: boolean
+  hasMarket: boolean
+  account: string | null
+  connecting: boolean
+  onConnect: () => void
+  onReview: () => void
+  onCancel: () => void
+  onConfirm: () => void
+  summary: Summary | null
+  phase: ReturnType<typeof useTx>['phase']
+  error: string
+  hash: string
+}) {
+  const btn: React.CSSProperties = { width: '100%', justifyContent: 'center', marginTop: 22, height: 42 }
+
+  if (phase === 'done') {
+    return (
+      <div style={{ marginTop: 22, padding: '14px 16px', borderRadius: 'var(--r-sm)', background: 'var(--positive-dim)' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--positive)', marginBottom: 4 }}>Position liquidated</div>
+        <TxStatus phase={phase} error={error} hash={hash} />
+      </div>
+    )
+  }
+
+  if (!account) {
+    return (
+      <button className="btn btn-primary" style={btn} disabled={connecting} onClick={onConnect}>
+        {connecting ? 'Connecting wallet' : 'Connect wallet to liquidate'}
+      </button>
+    )
+  }
+
+  if (!eligible) {
+    return (
+      <>
+        <button className="btn btn-primary" style={btn} disabled>Liquidate position</button>
+        <p style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 8 }}>
+          This position is still above a health factor of 1. It becomes available the moment it slips below.
+        </p>
+      </>
+    )
+  }
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      {!confirming ? (
+        <motion.div key="review" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <button className="btn btn-primary" style={btn} disabled={!hasMarket} onClick={onReview}>Liquidate position</button>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="confirm"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          style={{ marginTop: 22, padding: 16, borderRadius: 'var(--r-md)', border: '1px solid var(--accent-border)', background: 'var(--accent-dim)' }}
+        >
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 10 }}>Confirm liquidation</div>
+          {summary && (
+            <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+              {[
+                { l: 'You repay', v: summary.repay },
+                { l: 'You receive (estimate)', v: `${summary.receive} (${summary.receiveUsd})` },
+                { l: 'Estimated profit before fees', v: summary.profit },
+              ].map(r => (
+                <div key={r.l} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13 }}>
+                  <span style={{ color: 'var(--text-3)' }}>{r.l}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-1)' }}>{r.v}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <p style={{ fontSize: 12, color: 'var(--text-3)', lineHeight: 1.5, marginBottom: 14 }}>
+            Your wallet asks you to approve the loan asset first, then to send the liquidation. The whole debt is repaid in one transaction.
+          </p>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} disabled={phase === 'pending'} onClick={onConfirm}>
+              {phase === 'pending' ? 'Waiting for confirmation' : 'Confirm liquidation'}
+            </button>
+            <button className="btn btn-secondary" disabled={phase === 'pending'} onClick={onCancel}>Cancel</button>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <TxStatus phase={phase} error={error} hash={hash} />
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

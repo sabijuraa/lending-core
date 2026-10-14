@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Info, ArrowRight, Eye, ListChecks, LockKey } from '@phosphor-icons/react'
+import { Info, Eye, ListChecks, LockKey } from '@phosphor-icons/react'
 import { TokenLogo } from '@/components/ui/TokenLogo'
 import { LcCardTitle, LcPill, LcFootnote, lcPanel, lcTh, lcTd, marketStatus } from '@/components/market/LcUi'
 import { CountUp, LcRow, LcStoryBand, LcHelpCard, LcSectionHead } from '@/components/market/LcStory'
@@ -33,7 +33,6 @@ export default function AnalyticsPage() {
     })
   }, [data])
 
-  const illustrative = data.source === 'mock'
   const supplied = markets.reduce((s, m) => s + m.totalSupplied, 0)
   const borrowed = markets.reduce((s, m) => s + m.totalBorrowed, 0)
   const utilization = supplied > 0 ? (borrowed / supplied) * 100 : 0
@@ -60,7 +59,7 @@ export default function AnalyticsPage() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', padding: '48px 0 96px' }}>
+    <div style={{ padding: '8px 0 64px', overflowX: 'clip' }}>
       <div className="section-container">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE }} style={{ marginBottom: 28 }}>
           <div className="lc-eyebrow" style={{ marginBottom: 10 }}>Open data</div>
@@ -80,7 +79,6 @@ export default function AnalyticsPage() {
                 <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: s.label === 'Loans underwater' && s.value > 0 ? 'var(--danger)' : 'var(--text-1)' }}>
                   {loading ? '...' : <CountUp value={s.value} format={s.f} />}
                 </div>
-                {illustrative && <div style={{ fontSize: 11, color: 'var(--text-4)', marginTop: 4 }}>Illustrative</div>}
               </div>
             </StaggerItem>
           ))}
@@ -216,9 +214,7 @@ export default function AnalyticsPage() {
         </div>
 
         <LcFootnote icon={<Info size={16} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}>
-          {illustrative
-            ? 'All figures are illustrative and come from the demo data set for the Base Sepolia testnet.'
-            : 'All figures are read live from the Base Sepolia testnet.'}
+          Figures update with every block and come straight from the lending contracts.
         </LcFootnote>
 
         <div style={{ marginTop: 64 }}>
@@ -250,7 +246,7 @@ export default function AnalyticsPage() {
           </Stagger>
           <Reveal style={{ marginTop: 20 }}>
             <Link href="/markets" className="btn btn-primary" style={{ fontSize: 13, padding: '10px 18px' }}>
-              Explore the markets <ArrowRight size={13} />
+              Explore the markets
             </Link>
           </Reveal>
         </div>
