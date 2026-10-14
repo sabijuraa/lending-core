@@ -21,3 +21,5 @@ export const ADDRESSES = {
 export const isDeployed = ADDRESSES.LendingCore !== ZERO
 
 export const explorer = (addr: string) => `https://sepolia.basescan.org/address/${addr}`
+
+export const explorerTx = (hash: string) => `https://sepolia.basescan.org/tx/${hash}`

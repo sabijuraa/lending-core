@@ -27,7 +27,7 @@ markets.forEach(reprice)
 type Raw = { supplied: number; borrowed: number; collateral: number }
 const positions = new Map<string, Map<string, Raw>>()
 const others: { account: string; slug: string; raw: Raw }[] = [
-  { account: '0x71c4...9a2e', slug: 'weth', raw: { supplied: 0, borrowed: 25_400, collateral: 10 } },
+  { account: '0x71c4...9a2e', slug: 'weth', raw: { supplied: 0, borrowed: 26_100, collateral: 10 } },
   { account: '0x3b9d...0f17', slug: 'link', raw: { supplied: 0, borrowed: 6_200, collateral: 690 } },
 ]
 
@@ -72,7 +72,8 @@ function act(kind: ActivityItem['kind'], slug: string, amount: number, account: 
   }
   if (kind === 'repay') { const r = Math.min(amount, p.borrowed); p.borrowed -= r; m.totalBorrowed -= r }
   reprice(m)
-  activity.unshift({ id: fakeHash().slice(0, 10), kind, slug, amount, account, timestamp: Date.now() })
+  const hash = fakeHash()
+  activity.unshift({ id: hash.slice(0, 10), kind, slug, amount, account, timestamp: Date.now(), hash })
 }
 
 export const mockProvider: DataProvider = {
@@ -93,10 +94,13 @@ export const mockProvider: DataProvider = {
     if (!map) return []
     return [...map.entries()].filter(([, r]) => r.supplied || r.borrowed || r.collateral).map(([slug, r]) => view(slug, r))
   },
-  async getActivity(slug) { await delay(200); return activity.filter((a) => !slug || a.slug === slug).slice(0, 20) },
+  async getActivity(slug, account) {
+    await delay(200)
+    return activity.filter((a) => (!slug || a.slug === slug) && (!account || a.account.toLowerCase() === account.toLowerCase())).slice(0, 50)
+  },
   async getLiquidatable() {
     await delay(200)
-    return others.map((o) => ({ account: o.account, ...view(o.slug, o.raw) })).filter((p) => p.healthFactor < 1.05)
+    return others.filter((o) => o.raw.borrowed > 0).map((o) => ({ account: o.account, ...view(o.slug, o.raw) })).filter((p) => p.healthFactor < 1.05)
   },
   async supply(slug, amount, account) { await delay(); act('supply', slug, amount, account); return { hash: fakeHash() } },
   async withdraw(slug, amount, account) { await delay(); act('withdraw', slug, amount, account); return { hash: fakeHash() } },
@@ -108,4 +112,37 @@ export const mockProvider: DataProvider = {
   },
   async borrow(slug, amount, account) { await delay(); act('borrow', slug, amount, account); return { hash: fakeHash() } },
   async repay(slug, amount, account) { await delay(); act('repay', slug, amount, account); return { hash: fakeHash() } },
+  async withdrawCollateral(slug, amount, account) {
+    await delay()
+    if (!(amount > 0)) throw new Error('Enter an amount above zero.')
+    const m = markets.find((x) => x.slug === slug)
+    if (!m) throw new Error('That market does not exist.')
+    const p = bucket(account, slug)
+    if (amount > p.collateral) throw new Error('You cannot withdraw more collateral than you posted.')
+    if (healthFactor(p.collateral - amount, m.oraclePrice, m.lltv, p.borrowed) < 1) throw new Error('This would put your health factor below 1. Repay some debt first.')
+    p.collateral -= amount
+    return { hash: fakeHash() }
+  },
+  async liquidate(slug, borrower, account) {
+    await delay()
+    const o = others.find((x) => x.slug === slug && x.account === borrower)
+    const m = markets.find((x) => x.slug === slug)
+    if (!o || !m) throw new Error('That position no longer exists.')
+    if (healthFactor(o.raw.collateral, m.oraclePrice, m.lltv, o.raw.borrowed) >= 1) throw new Error('This position is healthy and cannot be liquidated.')
+    const debt = o.raw.borrowed
+    const seized = Math.min(o.raw.collateral, (debt * (1 + m.liquidationBonus)) / m.oraclePrice)
+    m.totalBorrowed -= debt
+    o.raw = { supplied: 0, borrowed: 0, collateral: o.raw.collateral - seized }
+    bucket(account, slug)
+    reprice(m)
+    const hash = fakeHash()
+    activity.unshift({ id: hash.slice(0, 10), kind: 'liquidate', slug, amount: debt, account, timestamp: Date.now(), hash })
+    return { hash }
+  },
+  async createMarket(input) {
+    await delay()
+    if (!(input.lltv > 0 && input.lltv < 1)) throw new Error('LLTV must be between 0 and 100 percent.')
+    if (!(input.liquidationBonus > 0 && input.liquidationBonus <= 0.2)) throw new Error('The liquidation bonus must be above 0 and at most 20 percent.')
+    return { hash: fakeHash() }
+  },
 }

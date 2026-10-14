@@ -7,7 +7,7 @@ import { ADDRESSES, isDeployed } from '@/lib/addresses'
 import { wagmiConfig } from '@/lib/wagmi'
 import { RATE_MODEL_PARAMS } from '@/lib/contracts'
 import { calculateBorrowAPY, calculateSupplyAPY } from '@/lib/formatting'
-import type { DataProvider, MarketView, PositionView } from './types'
+import type { CreateMarketInput, DataProvider, MarketView, PositionView } from './types'
 import { healthFactor } from './types'
 
 const client = createPublicClient({ chain: baseSepolia, transport: http() })
@@ -42,7 +42,7 @@ function find(slug: string) {
 }
 
 function requireDeployed() {
-  if (!isDeployed) throw new Error('Contracts are not deployed to Base Sepolia yet. Switch to the demo data source.')
+  if (!isDeployed) throw new Error('The protocol contracts are not available on this network yet.')
 }
 
 async function readMarket(m: (typeof MARKETS)[number]): Promise<MarketView> {
@@ -75,7 +75,7 @@ async function send(slug: string, fn: string, amount: number, account: string, c
     const h = await writeContract(wagmiConfig, { address: token, abi: erc20, functionName: 'approve', args: [ADDRESSES.LendingCore, value] })
     await waitForTransactionReceipt(wagmiConfig, { hash: h })
   }
-  const withReceiver = fn === 'withdraw' || fn === 'borrow'
+  const withReceiver = fn === 'withdraw' || fn === 'borrow' || fn === 'withdrawCollateral'
   const args = withReceiver ? [params(m), value, account, account] : [params(m), value, account]
   const hash = await writeContract(wagmiConfig, { address: ADDRESSES.LendingCore, abi, functionName: fn, args })
   await waitForTransactionReceipt(wagmiConfig, { hash })
@@ -123,4 +123,35 @@ export const chainProvider: DataProvider = {
   supplyCollateral: (slug, amount, account) => send(slug, 'supplyCollateral', amount, account, true),
   borrow: (slug, amount, account) => send(slug, 'borrow', amount, account),
   repay: (slug, amount, account) => send(slug, 'repay', amount, account),
+  withdrawCollateral: (slug, amount, account) => send(slug, 'withdrawCollateral', amount, account, true),
+  async liquidate(slug, borrower, account) {
+    requireDeployed()
+    const m = find(slug)
+    const mv = await readMarket(m)
+    const [, borrowShares] = (await client.readContract({ address: ADDRESSES.LendingCore, abi, functionName: 'position', args: [mv.id, borrower as Address] })) as bigint[]
+    const [, , ba, bs] = (await client.readContract({ address: ADDRESSES.LendingCore, abi, functionName: 'market', args: [mv.id] })) as bigint[]
+    const debt = bs > BigInt(0) ? (borrowShares * ba + bs - BigInt(1)) / bs : BigInt(0)
+    // Interest accrues inside the call, so approve a small buffer above the current debt.
+    const allowance = debt + debt / BigInt(100) + BigInt(1)
+    const h = await writeContract(wagmiConfig, { address: ADDRESSES.USDC, abi: erc20, functionName: 'approve', args: [ADDRESSES.LendingCore, allowance] })
+    await waitForTransactionReceipt(wagmiConfig, { hash: h })
+    const hash = await writeContract(wagmiConfig, { address: ADDRESSES.LendingCore, abi, functionName: 'liquidate', args: [params(m), borrower, account] })
+    await waitForTransactionReceipt(wagmiConfig, { hash })
+    return { hash }
+  },
+  async createMarket(input: CreateMarketInput) {
+    requireDeployed()
+    const p = {
+      loanToken: input.loanToken,
+      collateralToken: input.collateralToken,
+      oracle: input.oracle,
+      irm: input.irm,
+      lltv: parseUnits(String(input.lltv), 18),
+      liquidationBonus: parseUnits(String(input.liquidationBonus), 18),
+      maxStaleness: BigInt(input.maxStaleness),
+    }
+    const hash = await writeContract(wagmiConfig, { address: ADDRESSES.LendingCore, abi, functionName: 'createMarket', args: [p] })
+    await waitForTransactionReceipt(wagmiConfig, { hash })
+    return { hash }
+  },
 }

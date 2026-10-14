@@ -1,12 +1,10 @@
 'use client'
 import { useAccount } from 'wagmi'
-import { useData } from '@/providers/provider'
+import { useMounted } from './use-mounted'
 
-/** Connected address, or a local demo account when running on mock data. */
+/** The connected wallet address, or null when no wallet is connected. */
 export function useAccountId() {
   const { address } = useAccount()
-  const data = useData()
-  if (address) return { account: address as string, isDemo: false }
-  if (data.source === 'mock') return { account: 'demo-account', isDemo: true }
-  return { account: null, isDemo: false }
+  const mounted = useMounted()
+  return { account: mounted ? ((address as string | undefined) ?? null) : null }
 }

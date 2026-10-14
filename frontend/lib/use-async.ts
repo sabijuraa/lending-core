@@ -10,6 +10,8 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]) {
   const reload = useCallback(() => setTick((t) => t + 1), [])
   useEffect(() => {
     let live = true
+    // Show the loading state again whenever the inputs change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     fn()
       .then((d) => { if (live) { setData(d); setError(null) } })

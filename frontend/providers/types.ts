@@ -33,6 +33,8 @@ export type ActivityItem = {
   amount: number
   account: string
   timestamp: number
+  /** transaction hash when known */
+  hash?: string
 }
 
 export type ProtocolStats = {
@@ -43,19 +45,38 @@ export type ProtocolStats = {
 
 export type TxResult = { hash: string }
 
+export type LiquidatablePosition = PositionView & { account: string }
+
+export type CreateMarketInput = {
+  loanToken: `0x${string}`
+  collateralToken: `0x${string}`
+  oracle: `0x${string}`
+  irm: `0x${string}`
+  /** fraction, e.g. 0.86 */
+  lltv: number
+  /** fraction, e.g. 0.05 */
+  liquidationBonus: number
+  /** seconds */
+  maxStaleness: number
+}
+
 export interface DataProvider {
   readonly source: 'mock' | 'chain'
   getStats(): Promise<ProtocolStats>
   getMarkets(): Promise<MarketView[]>
   getMarket(slug: string): Promise<MarketView | null>
   getPositions(account: string): Promise<PositionView[]>
-  getActivity(slug?: string): Promise<ActivityItem[]>
-  getLiquidatable(): Promise<(PositionView & { account: string })[]>
+  getActivity(slug?: string, account?: string): Promise<ActivityItem[]>
+  getLiquidatable(): Promise<LiquidatablePosition[]>
   supply(slug: string, amount: number, account: string): Promise<TxResult>
   withdraw(slug: string, amount: number, account: string): Promise<TxResult>
   supplyCollateral(slug: string, amount: number, account: string): Promise<TxResult>
   borrow(slug: string, amount: number, account: string): Promise<TxResult>
   repay(slug: string, amount: number, account: string): Promise<TxResult>
+  withdrawCollateral(slug: string, amount: number, account: string): Promise<TxResult>
+  /** Repays the borrower's whole debt and seizes collateral plus the bonus to the caller. */
+  liquidate(slug: string, borrower: string, account: string): Promise<TxResult>
+  createMarket(input: CreateMarketInput, account: string): Promise<TxResult>
 }
 
 export function healthFactor(collateral: number, price: number, lltv: number, debt: number) {
