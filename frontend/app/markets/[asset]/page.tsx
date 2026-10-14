@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ArrowLeft, ArrowRight } from '@phosphor-icons/react'
+import { TokenPair } from '@/components/ui/TokenLogo'
 import { useData } from '@/providers/provider'
 import { useAsync } from '@/lib/use-async'
 import { KinkedRateCurve } from '@/components/charts/KinkedRateCurve'
@@ -53,21 +54,7 @@ export default function MarketDetailPage() {
               style={{ marginBottom: 28 }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
-                <div style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  background: 'var(--accent-dim)',
-                  border: '1px solid var(--accent-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: 'var(--accent)',
-                }}>
-                  {m.collateralSymbol.slice(0, 2)}
-                </div>
+                <TokenPair collateral={m.collateralSymbol} loan={m.loanSymbol} size={38} />
                 <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em' }}>
                   {m.collateralSymbol} <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>/ {m.loanSymbol}</span>
                 </h1>

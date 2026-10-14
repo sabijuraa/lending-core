@@ -417,3 +417,39 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Responsive step grid */
+@media (max-width: 768px) {
+  .step-grid-4 {
+    grid-template-columns: 1fr !important;
+  }
+  .isolation-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+@media (min-width: 769px) and (max-width: 1024px) {
+  .step-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Float animation for cards */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotateY(-4deg) rotateX(2deg); }
+  50% { transform: translateY(-8px) rotateY(-4deg) rotateX(2deg); }
+}
+
+/* Gradient border glow */
+@keyframes border-glow {
+  0%, 100% { border-color: var(--border-default); }
+  50% { border-color: var(--accent-border); }
+}
+
+/* Subtle scale on hover for cards */
+.card-hover-lift {
+  transition: transform 300ms var(--ease-expo), box-shadow 300ms ease;
+}
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(20,42,37,0.08);
+}

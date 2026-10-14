@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { ArrowSquareOut, ArrowRight, CaretRight } from '@phosphor-icons/react'
+import { FloatingMarketCard } from '@/components/ui/FloatingMarketCard'
 
 const SECTIONS = {
   overview: {
@@ -539,6 +540,38 @@ function DocsContent() {
 
       {/* Content */}
       <main style={{ padding: '48px 64px', maxWidth: 800 }}>
+        {activeSection === 'how-it-works' && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: 40,
+            padding: '24px 0',
+          }}>
+            <div style={{ position: 'relative' }}>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: 280,
+                height: 280,
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(23,77,64,0.04) 0%, transparent 70%)',
+                pointerEvents: 'none',
+              }} />
+              <FloatingMarketCard scale={0.78} />
+              <p style={{
+                textAlign: 'center',
+                marginTop: 14,
+                fontSize: 12,
+                fontWeight: 500,
+                color: 'var(--text-4)',
+              }}>
+                Isolated markets. Independent risk.
+              </p>
+            </div>
+          </div>
+        )}
         {content && (
           <>
             <h1 style={{

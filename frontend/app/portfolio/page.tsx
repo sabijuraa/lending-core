@@ -5,6 +5,7 @@ import { injected } from 'wagmi/connectors'
 import { motion } from 'framer-motion'
 import { Wallet, ArrowRight } from '@phosphor-icons/react'
 import Link from 'next/link'
+import { TokenPair } from '@/components/ui/TokenLogo'
 import { HealthGauge } from '@/components/charts/HealthGauge'
 import { useData } from '@/providers/provider'
 import type { PositionView, MarketView } from '@/providers/types'
@@ -165,21 +166,11 @@ export default function PortfolioPage() {
                       gap: 16,
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: '50%',
-                          background: 'var(--accent-dim)',
-                          border: '1px solid var(--accent-border)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          color: 'var(--accent)',
-                        }}>
-                          {(mkt?.collateralSymbol || pos.slug).slice(0, 2).toUpperCase()}
-                        </div>
+                        <TokenPair
+                          collateral={mkt?.collateralSymbol || pos.slug.split('-')[0] || '??'}
+                          loan={mkt?.loanSymbol || pos.slug.split('-')[1] || '??'}
+                          size={34}
+                        />
                         <div>
                           <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-1)' }}>
                             {mkt ? `${mkt.collateralSymbol}/${mkt.loanSymbol}` : pos.slug}

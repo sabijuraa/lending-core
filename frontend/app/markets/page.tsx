@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { CaretDown, CaretUp, Plus, MagnifyingGlass, ArrowRight } from '@phosphor-icons/react'
+import { TokenPair } from '@/components/ui/TokenLogo'
 import { UtilizationBar } from '@/components/charts/UtilizationBar'
 import { OracleDot } from '@/components/ui/OracleDot'
 import { useData } from '@/providers/provider'
@@ -198,21 +199,7 @@ export default function MarketsPage() {
                   <td style={{ paddingLeft: 24 }}>
                     <Link href={`/markets/${m.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: '50%',
-                          background: 'var(--accent-dim)',
-                          border: '1px solid var(--accent-border)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 11,
-                          fontWeight: 600,
-                          color: 'var(--accent)',
-                        }}>
-                          {m.collateralSymbol.slice(0, 2)}
-                        </div>
+                        <TokenPair collateral={m.collateralSymbol} loan={m.loanSymbol} size={32} />
                         <div>
                           <div style={{ fontWeight: 500, color: 'var(--text-1)', fontSize: 14 }}>
                             {m.collateralSymbol}/{m.loanSymbol}

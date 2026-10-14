@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ShieldCheck, Warning } from '@phosphor-icons/react'
+import { TokenPair } from '@/components/ui/TokenLogo'
 import { useData } from '@/providers/provider'
 import type { PositionView, MarketView } from '@/providers/types'
 import { formatUSD, formatPercent, formatTimeAgo, getHealthStatus } from '@/lib/formatting'
@@ -105,7 +106,10 @@ export default function LiquidationsPage() {
                         style={{ padding: 24, borderLeft: `2px solid ${borderColor}` }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)' }}>{pos.account}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {mkt && <TokenPair collateral={mkt.collateralSymbol} loan={mkt.loanSymbol} size={26} />}
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)' }}>{pos.account}</span>
+                          </div>
                           <span className="pill" style={{ fontSize: 10 }}>
                             {mkt ? `${mkt.collateralSymbol}/${mkt.loanSymbol}` : pos.slug}
                           </span>

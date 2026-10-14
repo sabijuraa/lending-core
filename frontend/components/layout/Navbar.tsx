@@ -1,11 +1,11 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi'
+import { useAccount, useConnect, useDisconnect } from 'wagmi'
 import { injected } from 'wagmi/connectors'
-import { List, X, CaretDown, Globe, Wallet } from '@phosphor-icons/react'
+import { List, X, Wallet } from '@phosphor-icons/react'
 import { truncateAddress } from '@/lib/formatting'
 
 const NAV_LINKS = [
@@ -16,20 +16,13 @@ const NAV_LINKS = [
   { href: '/docs', label: 'Learn & Docs' },
 ]
 
-const NETWORKS = [
-  { id: 84532, name: 'Base Sepolia', color: '#0052FF' },
-]
-
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [networkOpen, setNetworkOpen] = useState(false)
-  const networkRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
   const { address, isConnected } = useAccount()
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
-  const chainId = useChainId()
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 10)
@@ -45,18 +38,6 @@ export function Navbar() {
     }
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (networkRef.current && !networkRef.current.contains(e.target as Node)) {
-        setNetworkOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
-
-  const currentNetwork = NETWORKS.find(n => n.id === chainId) || NETWORKS[0]
 
   return (
     <>
@@ -132,97 +113,8 @@ export function Navbar() {
           ))}
         </div>
 
-        {/* Right side */}
+        {/* Right side - Connect button only */}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Network selector */}
-          <div ref={networkRef} style={{ position: 'relative' }}>
-            <button
-              onClick={() => setNetworkOpen(!networkOpen)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '7px 12px',
-                fontSize: 13,
-                fontWeight: 500,
-                color: 'var(--text-2)',
-                background: 'var(--surface)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--r-sm)',
-                cursor: 'pointer',
-                transition: 'border-color 150ms ease',
-              }}
-              className="hide-mobile"
-            >
-              <span style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: currentNetwork.color,
-                flexShrink: 0,
-              }} />
-              {currentNetwork.name}
-              <CaretDown size={12} style={{
-                transition: 'transform 150ms ease',
-                transform: networkOpen ? 'rotate(180deg)' : 'none',
-              }} />
-            </button>
-
-            <AnimatePresence>
-              {networkOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.15 }}
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: 6,
-                    background: 'var(--surface)',
-                    border: '1px solid var(--border-default)',
-                    borderRadius: 'var(--r-md)',
-                    padding: 4,
-                    minWidth: 180,
-                    boxShadow: '0 8px 24px rgba(20,42,37,0.08)',
-                  }}
-                >
-                  {NETWORKS.map((net) => (
-                    <button
-                      key={net.id}
-                      onClick={() => setNetworkOpen(false)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        width: '100%',
-                        padding: '10px 12px',
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: chainId === net.id ? 'var(--accent)' : 'var(--text-2)',
-                        background: chainId === net.id ? 'var(--accent-dim)' : 'transparent',
-                        border: 'none',
-                        borderRadius: 'var(--r-sm)',
-                        cursor: 'pointer',
-                        transition: 'background 100ms ease',
-                      }}
-                    >
-                      <span style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: '50%',
-                        background: net.color,
-                      }} />
-                      {net.name}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Wallet */}
           {isConnected && address ? (
             <button
               onClick={() => disconnect()}
@@ -348,26 +240,6 @@ export function Navbar() {
               transition={{ delay: 0.25 }}
               style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 10 }}
             >
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '12px 16px',
-                fontSize: 14,
-                color: 'var(--text-2)',
-                background: 'var(--surface)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--r-sm)',
-              }}>
-                <span style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: currentNetwork.color,
-                }} />
-                {currentNetwork.name}
-              </div>
-
               {isConnected && address ? (
                 <button
                   onClick={() => { disconnect(); setMobileOpen(false) }}
