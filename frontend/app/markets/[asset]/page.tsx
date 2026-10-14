@@ -3,15 +3,22 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ArrowRight } from '@phosphor-icons/react'
-import { TokenPair } from '@/components/ui/TokenLogo'
+import { useConnect, useReadContract } from 'wagmi'
+import { injected } from 'wagmi/connectors'
+import { formatUnits, type Address } from 'viem'
+import { ArrowLeft, Info, Wallet } from '@phosphor-icons/react'
+import { TokenLogo } from '@/components/ui/TokenLogo'
 import { useData } from '@/providers/provider'
+import { healthFactor, type MarketView } from '@/providers/types'
 import { useAsync } from '@/lib/use-async'
-import { KinkedRateCurve } from '@/components/charts/KinkedRateCurve'
-import { UtilizationBar } from '@/components/charts/UtilizationBar'
-import { OracleDot } from '@/components/ui/OracleDot'
-import { LoadingBlock, ErrorBlock, EmptyBlock, DemoNotice } from '@/components/ui/States'
-import { formatUSD, formatPercent, formatTimeAgo } from '@/lib/formatting'
+import { useAccountId } from '@/lib/use-account-id'
+import { ADDRESSES, isDeployed } from '@/lib/addresses'
+import TestTokenAbi from '@/lib/abi/TestToken.json'
+import { TxButton } from '@/components/market/TxButton'
+import { LcRateCurve } from '@/components/market/LcRateCurve'
+import { LcCardTitle, LcPill, LcFootnote, lcPanel, marketStatus } from '@/components/market/LcUi'
+import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/ui/States'
+import { formatUSD, formatPercent, formatTimeAgo, formatNumber } from '@/lib/formatting'
 
 export default function MarketDetailPage() {
   const { asset } = useParams<{ asset: string }>()
@@ -23,17 +30,7 @@ export default function MarketDetailPage() {
   return (
     <div style={{ minHeight: '100vh', padding: '40px 0 96px' }}>
       <div className="section-container">
-        {/* Breadcrumb */}
-        <Link href="/markets" style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 13,
-          color: 'var(--text-3)',
-          textDecoration: 'none',
-          marginBottom: 20,
-          transition: 'color 150ms ease',
-        }}>
+        <Link href="/markets" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-3)', textDecoration: 'none', marginBottom: 20 }}>
           <ArrowLeft size={13} />
           All markets
         </Link>
@@ -45,221 +42,190 @@ export default function MarketDetailPage() {
         )}
 
         {m && (
-          <>
-            {/* Header */}
-            <motion.header
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-              style={{ marginBottom: 28 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
-                <TokenPair collateral={m.collateralSymbol} loan={m.loanSymbol} size={38} />
-                <h1 style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.02em' }}>
-                  {m.collateralSymbol} <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>/ {m.loanSymbol}</span>
-                </h1>
-                <OracleDot lastUpdate={m.oracleLastUpdate} maxStaleness={m.maxStaleness} showLabel size={8} />
-              </div>
-              <p style={{ color: 'var(--text-3)', fontSize: 14 }}>
-                Borrow {m.loanSymbol} against {m.collateralName}. This market has its own oracle and risk boundary.
-              </p>
-              <DemoNotice />
-            </motion.header>
-
-            {/* Two column layout */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 380px',
-              gap: 24,
-              alignItems: 'start',
-            }}>
-              {/* Left: Market data */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                {/* Key metrics */}
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.05 }}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 1,
-                    background: 'var(--border-subtle)',
-                    borderRadius: 'var(--r-lg)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {[
-                    ['Total Supplied', formatUSD(m.totalSupplied, true)],
-                    ['Total Borrowed', formatUSD(m.totalBorrowed, true)],
-                    ['Supply APY', formatPercent(m.supplyAPY, 2)],
-                    ['Borrow APY', formatPercent(m.borrowAPY, 2)],
-                  ].map(([k, v]) => (
-                    <div key={k} style={{ background: 'var(--surface)', padding: '20px 20px' }}>
-                      <div className="stat-label">{k}</div>
-                      <div style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 18,
-                        fontWeight: 500,
-                        color: k === 'Supply APY' ? 'var(--positive)' : 'var(--text-1)',
-                        marginTop: 4,
-                        fontVariantNumeric: 'tabular-nums',
-                      }}>{v}</div>
-                    </div>
-                  ))}
-                </motion.div>
-
-                {/* Utilization and rate curve */}
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  className="card"
-                  style={{ padding: 24 }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <div>
-                      <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-1)', marginBottom: 4 }}>Rate curve</h2>
-                      <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
-                        Rates rise slowly until the kink, then steeply.
-                      </p>
-                    </div>
-                  </div>
-                  <div style={{ marginBottom: 20 }}>
-                    <UtilizationBar utilization={m.utilization} />
-                  </div>
-                  <KinkedRateCurve currentUtilization={m.utilization} />
-                </motion.div>
-
-                {/* Market parameters */}
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.15 }}
-                  className="card"
-                  style={{ padding: 24 }}
-                >
-                  <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-1)', marginBottom: 16 }}>Parameters</h2>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                    {[
-                      ['Liquidation LTV', formatPercent(m.lltv * 100, 0)],
-                      ['Liquidation bonus', formatPercent(m.liquidationBonus * 100, 0)],
-                      ['Oracle price', formatUSD(m.oraclePrice)],
-                      ['Available liquidity', formatUSD(m.totalSupplied - m.totalBorrowed, true)],
-                    ].map(([k, v]) => (
-                      <div key={k} style={{
-                        padding: '12px 14px',
-                        background: 'var(--surface-2)',
-                        borderRadius: 'var(--r-sm)',
-                        border: '1px solid var(--border-subtle)',
-                      }}>
-                        <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{k}</div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 500, color: 'var(--text-1)' }}>{v}</div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-
-                {/* Recent activity */}
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.2 }}
-                >
-                  <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-1)', marginBottom: 12 }}>Recent activity</h2>
-                  {activity.loading && <LoadingBlock rows={3} />}
-                  {activity.error && <ErrorBlock message={activity.error} onRetry={activity.reload} />}
-                  {activity.data && activity.data.length === 0 && (
-                    <EmptyBlock title="No activity yet" body="Supplies, borrows and liquidations in this market will show here." />
-                  )}
-                  {activity.data && activity.data.length > 0 && (
-                    <div style={{
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border-default)',
-                      borderRadius: 'var(--r-lg)',
-                      overflow: 'hidden',
-                    }}>
-                      <table className="data-table">
-                        <thead>
-                          <tr>
-                            <th style={{ paddingLeft: 20, paddingTop: 14 }}>Action</th>
-                            <th style={{ paddingTop: 14 }}>Amount</th>
-                            <th style={{ paddingTop: 14 }}>Account</th>
-                            <th style={{ paddingTop: 14, paddingRight: 20 }}>When</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activity.data.map((a) => (
-                            <tr key={a.id}>
-                              <td style={{ paddingLeft: 20, textTransform: 'capitalize' }}>
-                                <span className={`pill pill-${a.kind === 'supply' || a.kind === 'repay' ? 'positive' : a.kind === 'liquidate' ? 'danger' : 'active'}`}>
-                                  {a.kind}
-                                </span>
-                              </td>
-                              <td style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>{formatUSD(a.amount)}</td>
-                              <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-3)' }}>{a.account}</td>
-                              <td style={{ color: 'var(--text-4)', fontSize: 13, paddingRight: 20 }}>{formatTimeAgo(a.timestamp)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </motion.div>
-              </div>
-
-              {/* Right: Transaction panel */}
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-                style={{ position: 'sticky', top: 88 }}
-              >
-                <TransactionPanel market={m} />
-              </motion.div>
-            </div>
-          </>
+          <MarketBody
+            m={m}
+            illustrative={data.source === 'mock'}
+            onChanged={() => { market.reload(); activity.reload() }}
+            activity={
+              <ActivityCard loading={activity.loading} error={activity.error} reload={activity.reload} items={activity.data} />
+            }
+          />
         )}
       </div>
-
-      <style jsx>{`
-        @media (max-width: 1024px) {
-          div[style*="gridTemplateColumns: '1fr 380px'"],
-          div[style*="grid-template-columns"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   )
 }
 
-function TransactionPanel({ market }: { market: { slug: string; collateralSymbol: string; loanSymbol: string; collateralName: string } }) {
-  const [tab, setTab] = useState<'supply' | 'borrow'>('supply')
+function MarketBody({ m, illustrative, onChanged, activity }: { m: MarketView; illustrative: boolean; onChanged: () => void; activity: React.ReactNode }) {
+  const st = marketStatus(m.oracleLastUpdate, m.maxStaleness)
+  const liquidity = m.totalSupplied - m.totalBorrowed
+
+  const metrics = [
+    { k: 'Supply APY', v: formatPercent(m.supplyAPY), color: 'var(--positive)' },
+    { k: 'Borrow APY', v: formatPercent(m.borrowAPY), color: 'var(--text-1)' },
+    { k: 'Utilization', v: formatPercent(m.utilization * 100, 0), color: 'var(--positive)' },
+    { k: 'Available Liquidity', v: formatUSD(liquidity, true), color: 'var(--text-1)' },
+  ]
+
+  const params = [
+    { k: 'Loan asset', v: m.loanSymbol },
+    { k: 'Collateral asset', v: m.collateralSymbol },
+    { k: 'Liquidation LTV', v: formatPercent(m.lltv * 100, 0) },
+    { k: 'Liquidation bonus', v: formatPercent(m.liquidationBonus * 100, 0) },
+    { k: 'Oracle price', v: formatUSD(m.oraclePrice) },
+    { k: 'Oracle', v: `${st.oracle} (${formatTimeAgo(m.oracleLastUpdate)})` },
+  ]
 
   return (
-    <div className="card" style={{ overflow: 'hidden' }}>
-      {/* Tab bar */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        borderBottom: '1px solid var(--border-subtle)',
-      }}>
-        {(['supply', 'borrow'] as const).map(t => (
+    <>
+      <motion.header
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginBottom: 8 }}
+      >
+        <TokenLogo symbol={m.collateralSymbol} size={40} />
+        <h1 style={{ fontSize: 30, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-1)' }}>
+          {m.collateralSymbol} / {m.loanSymbol}
+        </h1>
+        <LcPill tone={st.tone}>{st.label}</LcPill>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-2)',
+          padding: '5px 11px', border: '1px solid var(--border-default)', borderRadius: 999, background: 'var(--surface)',
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#2F6FED' }} />
+          Base Sepolia
+        </span>
+      </motion.header>
+      <p style={{ color: 'var(--text-3)', fontSize: 14, marginBottom: 28 }}>
+        Borrow {m.loanSymbol} against {m.collateralName}. This market has its own oracle and its own risk boundary.
+      </p>
+
+      <div className="lc-detail-grid" style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 20, marginBottom: 20 }}>
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}
+          style={{ ...lcPanel, padding: 24 }}>
+          <LcCardTitle>Key Metrics</LcCardTitle>
+          <div>
+            {metrics.map((r, i) => (
+              <div key={r.k} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0',
+                borderBottom: i < metrics.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+              }}>
+                <span style={{ fontSize: 13, color: 'var(--text-3)' }}>{r.k}</span>
+                <span style={{ fontSize: 18, fontWeight: 600, color: r.color, fontVariantNumeric: 'tabular-nums' }}>{r.v}</span>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}
+          style={{ ...lcPanel, padding: 24 }}>
+          <LcCardTitle>Rate Curve</LcCardTitle>
+          <LcRateCurve utilization={m.utilization} />
+        </motion.section>
+      </div>
+
+      <div className="lc-detail-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 }}
+          style={{ ...lcPanel, padding: 24 }}>
+          <LcCardTitle>Market Parameters</LcCardTitle>
+          {params.map((r, i) => (
+            <div key={r.k} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 0',
+              borderBottom: i < params.length - 1 ? '1px solid var(--border-subtle)' : 'none', fontSize: 13,
+            }}>
+              <span style={{ color: 'var(--text-3)' }}>{r.k}</span>
+              <span style={{ color: 'var(--text-1)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{r.v}</span>
+            </div>
+          ))}
+        </motion.section>
+
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.2 }}
+          style={{ ...lcPanel, padding: 24 }}>
+          <LcCardTitle>Supply / Borrow</LcCardTitle>
+          <ActionPanel m={m} onChanged={onChanged} />
+        </motion.section>
+      </div>
+
+      <div style={{ marginBottom: 20 }}>
+        <LcFootnote icon={<Info size={16} style={{ color: 'var(--text-3)', flexShrink: 0 }} />}>
+          {illustrative
+            ? 'Rates and parameters are illustrative. Demo balances reset when you reload.'
+            : 'Rates and parameters are read live from the Base Sepolia testnet.'}
+        </LcFootnote>
+      </div>
+
+      {activity}
+
+      <style jsx global>{`
+        @media (max-width: 960px) { .lc-detail-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 560px) {
+          .lc-act-row { grid-template-columns: auto 1fr auto !important; gap: 10px !important; }
+          .lc-act-account { display: none; }
+        }
+      `}</style>
+    </>
+  )
+}
+
+const erc20 = TestTokenAbi as never
+
+function ActionPanel({ m, onChanged }: { m: MarketView; onChanged: () => void }) {
+  const data = useData()
+  const { account } = useAccountId()
+  const { connect } = useConnect()
+  const [tab, setTab] = useState<'supply' | 'borrow'>('supply')
+  const [amount, setAmount] = useState('')
+  const positions = useAsync(() => (account ? data.getPositions(account) : Promise.resolve([])), [account, data])
+  const pos = positions.data?.find((p) => p.slug === m.slug)
+
+  const wallet = useReadContract({
+    address: ADDRESSES.USDC as Address,
+    abi: erc20,
+    functionName: 'balanceOf',
+    args: [account as Address],
+    query: { enabled: isDeployed && data.source === 'chain' && !!account && account.startsWith('0x') },
+  })
+  const rawBalance: unknown = (wallet as { data?: unknown }).data
+  const walletBalance = typeof rawBalance === 'bigint' ? Number(formatUnits(rawBalance, 6)) : null
+
+  const liquidity = Math.max(0, m.totalSupplied - m.totalBorrowed)
+  const collateral = pos?.collateral ?? 0
+  const debt = pos?.borrowed ?? 0
+  const borrowLimit = Math.max(0, Math.min(liquidity, collateral * m.oraclePrice * m.lltv - debt))
+  const max = tab === 'supply' ? walletBalance : borrowLimit
+
+  const value = Number(amount)
+  const valid = Number.isFinite(value) && value > 0
+  const hfAfter = healthFactor(collateral, m.oraclePrice, m.lltv, debt + (valid ? value : 0))
+
+  function refresh() {
+    setAmount('')
+    positions.reload()
+    onChanged()
+  }
+
+  function switchTab(t: 'supply' | 'borrow') {
+    setTab(t)
+    setAmount('')
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <div role="tablist" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 4, background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--r-md)' }}>
+        {(['supply', 'borrow'] as const).map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => switchTab(t)}
             style={{
-              padding: '14px 0',
-              fontSize: 14,
-              fontWeight: tab === t ? 600 : 500,
+              padding: '9px 0', fontSize: 13, fontWeight: tab === t ? 600 : 500, textTransform: 'capitalize', cursor: 'pointer',
               color: tab === t ? 'var(--accent)' : 'var(--text-3)',
-              background: 'none',
-              border: 'none',
-              borderBottom: tab === t ? '2px solid var(--accent)' : '2px solid transparent',
-              cursor: 'pointer',
-              transition: 'color 150ms ease',
-              textTransform: 'capitalize',
+              background: tab === t ? 'var(--surface)' : 'transparent',
+              border: tab === t ? '1px solid var(--accent-border)' : '1px solid transparent',
+              borderRadius: 'var(--r-sm)',
+              transition: 'all 150ms ease',
             }}
           >
             {t}
@@ -267,37 +233,102 @@ function TransactionPanel({ market }: { market: { slug: string; collateralSymbol
         ))}
       </div>
 
-      <div style={{ padding: 24 }}>
-        {tab === 'supply' ? (
-          <>
-            <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>
-              Supply {market.loanSymbol} to earn yield from borrowers in this isolated market.
-            </p>
-            <Link
-              href={`/supply/${market.slug}`}
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              Supply {market.loanSymbol}
-              <ArrowRight size={14} weight="bold" />
-            </Link>
-          </>
-        ) : (
-          <>
-            <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>
-              Deposit {market.collateralSymbol} as collateral and borrow {market.loanSymbol} at the current rate.
-            </p>
-            <Link
-              href={`/borrow/${market.slug}`}
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              Borrow {market.loanSymbol}
-              <ArrowRight size={14} weight="bold" />
-            </Link>
-          </>
-        )}
+      <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--r-md)', background: 'var(--surface)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, color: 'var(--text-1)' }}>
+            <TokenLogo symbol={m.loanSymbol} size={20} />
+            {m.loanSymbol}
+          </span>
+          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+            {tab === 'supply'
+              ? walletBalance !== null ? `Wallet ${formatNumber(walletBalance)}` : 'Earn the supply rate'
+              : `Limit ${formatNumber(borrowLimit)}`}
+          </span>
+        </div>
+        <input
+          inputMode="decimal"
+          aria-label={`Amount in ${m.loanSymbol}`}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+          placeholder="0.00"
+          style={{ width: '100%', padding: '12px 14px', fontSize: 20, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: 'var(--text-1)', background: 'transparent', border: 'none', outline: 'none' }}
+        />
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+        {[25, 50, 75, 100].map((p) => (
+          <button
+            key={p}
+            disabled={!max}
+            onClick={() => max && setAmount(String(Math.floor(max * p) / 100))}
+            title={!max ? (tab === 'supply' ? 'Wallet balance is not available here' : 'Post collateral to set a borrow limit') : undefined}
+            style={{
+              padding: '8px 0', fontSize: 12, fontWeight: 500, borderRadius: 'var(--r-sm)',
+              border: '1px solid var(--border-default)', background: 'var(--surface-2)', color: 'var(--text-2)',
+              cursor: max ? 'pointer' : 'not-allowed', opacity: max ? 1 : 0.55,
+            }}
+          >
+            {p}%
+          </button>
+        ))}
+      </div>
+
+      {tab === 'borrow' && account && (
+        <div style={{ fontSize: 12, color: 'var(--text-3)', display: 'flex', justifyContent: 'space-between' }}>
+          <span>{formatNumber(collateral, 4)} {m.collateralSymbol} posted</span>
+          <span>
+            Health factor after{' '}
+            <strong style={{ color: hfAfter < 1 ? 'var(--danger)' : hfAfter < 1.5 ? 'var(--warning)' : 'var(--positive)', fontWeight: 600 }}>
+              {Number.isFinite(hfAfter) ? hfAfter.toFixed(2) : 'no debt'}
+            </strong>
+          </span>
+        </div>
+      )}
+
+      {!account ? (
+        <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} onClick={() => connect({ connector: injected() })}>
+          <Wallet size={15} /> Connect Wallet
+        </button>
+      ) : tab === 'supply' ? (
+        <TxButton label={`Supply ${m.loanSymbol}`} disabled={!valid} run={() => data.supply(m.slug, value, account)} onDone={refresh} />
+      ) : collateral <= 0 ? (
+        <Link href={`/borrow/${m.slug}`} className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }}>
+          Post {m.collateralSymbol} collateral to borrow
+        </Link>
+      ) : (
+        <TxButton label={`Borrow ${m.loanSymbol}`} disabled={!valid || hfAfter < 1} run={() => data.borrow(m.slug, value, account)} onDone={refresh} />
+      )}
     </div>
+  )
+}
+
+function ActivityCard({ loading, error, reload, items }: {
+  loading: boolean
+  error: string | null
+  reload: () => void
+  items: { id: string; kind: string; amount: number; account: string; timestamp: number }[] | null
+}) {
+  return (
+    <section style={{ ...lcPanel, padding: 24 }}>
+      <LcCardTitle>Recent Activity</LcCardTitle>
+      {loading && <LoadingBlock rows={3} />}
+      {error && <ErrorBlock message={error} onRetry={reload} />}
+      {items && items.length === 0 && (
+        <p style={{ fontSize: 13, color: 'var(--text-3)' }}>Supplies, borrows and liquidations in this market will show here.</p>
+      )}
+      {items && items.length > 0 && items.slice(0, 6).map((a, i, arr) => (
+        <div key={a.id} className="lc-act-row" style={{
+          display: 'grid', gridTemplateColumns: '110px 1fr auto auto', gap: 16, alignItems: 'center', padding: '12px 0',
+          borderBottom: i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none', fontSize: 13,
+        }}>
+          <span style={{ textTransform: 'capitalize' }}>
+            <LcPill tone={a.kind === 'liquidate' ? 'danger' : a.kind === 'borrow' ? 'warning' : 'positive'}>{a.kind}</LcPill>
+          </span>
+          <span className="lc-act-account" style={{ color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{a.account}</span>
+          <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{formatUSD(a.amount)}</span>
+          <span style={{ color: 'var(--text-4)', fontSize: 12, minWidth: 56, textAlign: 'right' }}>{formatTimeAgo(a.timestamp)}</span>
+        </div>
+      ))}
+    </section>
   )
 }
