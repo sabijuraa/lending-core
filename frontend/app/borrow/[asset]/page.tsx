@@ -1,17 +1,16 @@
 'use client'
-import { useState } from 'react'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { useData } from '@/providers/provider'
 import { healthFactor } from '@/providers/types'
 import { useAsync } from '@/lib/use-async'
 import { useAccountId } from '@/lib/use-account-id'
-import { HealthGauge } from '@/components/charts/HealthGauge'
-import { TxButton } from '@/components/market/TxButton'
-import { LoadingBlock, ErrorBlock, EmptyBlock, DemoNotice } from '@/components/ui/States'
+import { LoadingBlock, ErrorBlock, EmptyBlock } from '@/components/ui/States'
+import { LcHealthArc } from '@/components/portfolio/LcHealthArc'
+import { Reveal } from '@/components/ui/Reveal'
+import { AppHeader, DemoBanner, FactsCard, StepsCard, panel } from '@/components/app/AppUi'
+import { BorrowPanel } from '@/components/app/BorrowPanel'
 import { formatUSD, formatPercent } from '@/lib/formatting'
-
-const inputStyle = { fontFamily: 'var(--font-mono)', fontSize: 22, padding: '10px 12px', border: '1px solid var(--border-default)', borderRadius: 10, background: 'var(--bg-1)', color: 'var(--text-1)', width: '100%' } as const
+import s from '@/components/app/app.module.css'
 
 export default function BorrowAssetPage() {
   const { asset } = useParams<{ asset: string }>()
@@ -19,58 +18,62 @@ export default function BorrowAssetPage() {
   const { account } = useAccountId()
   const market = useAsync(() => data.getMarket(asset), [asset, data])
   const positions = useAsync(() => (account ? data.getPositions(account) : Promise.resolve([])), [account, data])
-  const [collateral, setCollateral] = useState('')
-  const [amount, setAmount] = useState('')
   const m = market.data
   const pos = positions.data?.find((p) => p.slug === asset)
-  const col = Number(collateral) || 0
-  const amt = Number(amount) || 0
-  const totalCol = (pos?.collateral ?? 0) + col
-  const totalDebt = (pos?.borrowed ?? 0) + amt
-  const hf = m ? healthFactor(totalCol, m.oraclePrice, m.lltv, totalDebt) : Infinity
-  const limit = m ? totalCol * m.oraclePrice * m.lltv - (pos?.borrowed ?? 0) : 0
-  const liqPrice = m && totalCol > 0 && totalDebt > 0 ? totalDebt / (totalCol * m.lltv) : null
+  const hf = m ? healthFactor(pos?.collateral ?? 0, m.oraclePrice, m.lltv, pos?.borrowed ?? 0) : Infinity
 
-  function refresh() { setCollateral(''); setAmount(''); market.reload(); positions.reload() }
+  function refresh() { market.reload(); positions.reload() }
 
   return (
-    <div style={{ padding: '48px 0 96px' }}>
-      <div className="section-container" style={{ maxWidth: 960 }}>
-        <Link href={`/markets/${asset}`} style={{ fontSize: 13, color: 'var(--text-3)' }}>Back to market</Link>
-        {market.loading && <div style={{ marginTop: 24 }}><LoadingBlock /></div>}
-        {market.error && <div style={{ marginTop: 24 }}><ErrorBlock message={market.error} onRetry={market.reload} /></div>}
-        {!market.loading && !market.error && !m && <div style={{ marginTop: 24 }}><EmptyBlock title="Market not found" body="Pick a market from the list." href="/markets" cta="See markets" /></div>}
+    <div className={s.page}>
+      <div className="section-container">
+        {market.loading && <LoadingBlock />}
+        {market.error && <ErrorBlock message={market.error} onRetry={market.reload} />}
+        {!market.loading && !market.error && !m && <EmptyBlock title="Market not found" body="Pick a market from the list." href="/borrow" cta="See where to borrow" />}
         {m && (
           <>
-            <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 600, margin: '16px 0 6px' }}>Borrow {m.loanSymbol} against {m.collateralSymbol}</h1>
-            <p style={{ color: 'var(--text-2)' }}>Post {m.collateralSymbol} and borrow up to {formatPercent(m.lltv * 100, 0)} of its value. Below a health factor of 1 anyone can liquidate the position.</p>
-            <DemoNotice />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginTop: 24 }}>
-              <div className="card" style={{ padding: 24, display: 'grid', gap: 16 }}>
-                <div style={{ fontSize: 14, color: 'var(--text-2)' }}>
-                  Your position has {(pos?.collateral ?? 0).toLocaleString()} {m.collateralSymbol} posted and {formatUSD(pos?.borrowed ?? 0)} borrowed.
-                </div>
-                <label style={{ display: 'grid', gap: 6 }}>
-                  <span className="stat-label">Add collateral in {m.collateralSymbol}</span>
-                  <input inputMode="decimal" value={collateral} onChange={(e) => setCollateral(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0.0" style={inputStyle} />
-                </label>
-                {account && <TxButton label={`Post ${m.collateralSymbol}`} disabled={!(col > 0)} run={() => data.supplyCollateral(m.slug, col, account)} onDone={refresh} />}
-                <label style={{ display: 'grid', gap: 6 }}>
-                  <span className="stat-label">Borrow amount in {m.loanSymbol}</span>
-                  <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))} placeholder="0.00" style={inputStyle} />
-                </label>
-                <div style={{ fontSize: 13, color: 'var(--text-2)' }}>Borrow limit {formatUSD(Math.max(0, limit))} at {formatPercent(m.borrowAPY, 2)} APY</div>
-                {account ? (
-                  <TxButton label={`Borrow ${m.loanSymbol}`} disabled={!(amt > 0) || hf < 1} run={() => data.borrow(m.slug, amt, account)} onDone={refresh} />
-                ) : <p style={{ color: 'var(--text-2)' }}>Connect a wallet to borrow.</p>}
+            <AppHeader back={{ href: `/markets/${m.slug}`, label: `${m.collateralSymbol} / ${m.loanSymbol} market` }} eyebrow="Borrow"
+              title={`Borrow ${m.loanSymbol} against ${m.collateralSymbol}`}
+              subtitle={`Add ${m.collateralSymbol} and borrow up to ${formatPercent(m.lltv * 100, 0)} of its value at ${formatPercent(m.borrowAPY, 2)} APY. You keep the upside of your ${m.collateralSymbol}.`} />
+            <DemoBanner />
+            <div className={`${s.split} ${s.splitWide}`}>
+              <div style={{ display: 'grid', gap: 16 }}>
+                <Reveal>
+                  <div style={{ ...panel, padding: 22 }} className={s.hfCard}>
+                    <LcHealthArc value={hf} />
+                    <div style={{ display: 'grid', gap: 10, minWidth: 0 }}>
+                      <h2 className="lc-section-title" style={{ fontSize: 15, margin: 0 }}>Your position here</h2>
+                      <div style={{ fontSize: 13, color: 'var(--text-2)', lineHeight: 1.7 }}>
+                        Collateral <strong style={{ color: 'var(--text-1)' }}>{(pos?.collateral ?? 0).toLocaleString()} {m.collateralSymbol}</strong>
+                        <span style={{ color: 'var(--text-4)' }}> ({formatUSD((pos?.collateral ?? 0) * m.oraclePrice)})</span><br />
+                        Borrowed <strong style={{ color: 'var(--text-1)' }}>{formatUSD(pos?.borrowed ?? 0)}</strong>
+                      </div>
+                      <p style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text-3)', margin: 0 }}>
+                        {(pos?.borrowed ?? 0) > 0 ? 'Keep your health factor well above 1. Add collateral or repay if it starts to slide.' : 'You have no debt here yet, so nothing can be liquidated.'}
+                      </p>
+                    </div>
+                  </div>
+                </Reveal>
+                <Reveal delay={0.05}>
+                  <FactsCard title="Market at a glance" rows={[
+                    { label: 'Borrow APY', value: formatPercent(m.borrowAPY, 2) },
+                    { label: `${m.collateralSymbol} price`, value: formatUSD(m.oraclePrice) },
+                    { label: 'Max loan to value', value: formatPercent(m.lltv * 100, 0) },
+                    { label: 'Liquidation bonus', value: formatPercent(m.liquidationBonus * 100, 0) },
+                    { label: 'Available to borrow', value: formatUSD(Math.max(0, m.totalSupplied - m.totalBorrowed)) },
+                  ]} />
+                </Reveal>
+                <Reveal delay={0.1}>
+                  <StepsCard title="How borrowing works" steps={[
+                    { title: `Add ${m.collateralSymbol}`, body: 'Your collateral sets how much you can borrow. More collateral means more room.' },
+                    { title: `Borrow ${m.loanSymbol}`, body: 'Funds arrive in your wallet. Interest starts accruing on what you owe.' },
+                    { title: 'Repay on your schedule', body: 'There is no fixed term. Repay any time to lower your debt and free your collateral.' },
+                  ]} />
+                </Reveal>
               </div>
-              <div className="card" style={{ padding: 24, display: 'grid', justifyItems: 'center', alignContent: 'start', gap: 12 }}>
-                <span className="stat-label">Health factor after this borrow</span>
-                <HealthGauge value={hf} />
-                <p style={{ fontSize: 13, color: hf < 1 ? 'var(--danger)' : 'var(--text-2)', textAlign: 'center' }}>
-                  {hf < 1 ? 'This would be liquidatable right away. Add collateral or borrow less.' : liqPrice ? `Liquidation if ${m.collateralSymbol} falls to ${formatUSD(liqPrice)}.` : 'No debt yet, so nothing can be liquidated.'}
-                </p>
-              </div>
+              <Reveal delay={0.1} className={s.sticky}>
+                <BorrowPanel m={m} pos={pos} onChanged={refresh} />
+              </Reveal>
             </div>
           </>
         )}
