@@ -2,8 +2,6 @@
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
-  ArrowLeft,
-  ArrowRight,
   ArrowsLeftRight,
   BookOpen,
   ChartLineUp,
@@ -135,7 +133,7 @@ export default function HowItWorksPage() {
           href="/docs"
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-3)', marginBottom: 28, textDecoration: 'none' }}
         >
-          <ArrowLeft size={13} /> Learn &amp; Docs
+          Learn &amp; Docs
         </Link>
 
         {/* Hero */}
@@ -314,7 +312,7 @@ export default function HowItWorksPage() {
                   ))}
                 </ul>
                 <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 22, lineHeight: 1.6 }}>
-                  Example numbers for illustration only. They are not live prices, live rates or a promise of any outcome.
+                  This is an example scenario. Real prices and rates move, and nothing here is a promise of any outcome.
                 </p>
               </aside>
             </Reveal>
@@ -457,12 +455,12 @@ export default function HowItWorksPage() {
             <div style={{ maxWidth: 540 }}>
               <h2 style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.02em', marginBottom: 8 }}>Ready to try it?</h2>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.72)', lineHeight: 1.6 }}>
-                lending-core runs on the Base Sepolia testnet, so you can practice every step with test tokens before real money is ever involved.
+                Open the app, pick a market and start small. Every step shows you what will happen before you confirm.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <Link href="/markets" className="btn" style={{ background: '#FFFFFF', color: DARK, borderColor: '#FFFFFF', gap: 6 }}>
-                Explore markets <ArrowRight size={13} />
+                Explore markets
               </Link>
               <Link href="/docs?tab=risk" className="btn" style={{ background: 'transparent', color: '#FFFFFF', borderColor: 'rgba(255,255,255,0.45)' }}>
                 Understand the risks

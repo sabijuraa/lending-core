@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Plus } from '@phosphor-icons/react'
 import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
 import s from './home.module.css'
 
@@ -23,8 +22,8 @@ const FAQS = [
     a: 'Because a failure in a market you never used cannot reach your money. Each market has its own price source and its own limits, so you only take the risk you chose.',
   },
   {
-    q: 'Is it live with real funds?',
-    a: 'Not yet. lending-core runs on the Base Sepolia test network with test tokens, and the contracts have not been externally audited. Treat everything here as a preview.',
+    q: 'Has lending-core been audited?',
+    a: 'Not yet. The contracts are covered by extensive tests but have not had an external audit. Start with amounts you can afford to lose and read the risk disclosure first.',
   },
   {
     q: 'Who controls the protocol?',
@@ -52,9 +51,7 @@ export function Faq() {
                 <StaggerItem key={f.q} className={s.faqItem}>
                   <button className={s.faqQ} aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : i)}>
                     {f.q}
-                    <motion.span animate={{ rotate: isOpen ? 45 : 0 }} className={s.faqIcon}>
-                      <Plus size={16} weight="bold" />
-                    </motion.span>
+                    <span className={s.faqIcon} style={{ fontSize: 12, fontWeight: 600 }}>{isOpen ? 'Close' : 'Open'}</span>
                   </button>
                   <AnimatePresence initial={false}>
                     {isOpen && (

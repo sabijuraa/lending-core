@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, CheckCircle } from '@phosphor-icons/react'
+import { CheckCircle } from '@phosphor-icons/react'
 import { Reveal } from '@/components/ui/Reveal'
 import { WireGlobe } from './WireGlobe'
 import s from './home.module.css'
@@ -82,7 +82,7 @@ export function Personas() {
                 <h3 className={s.personaTitle}>{p.title}</h3>
                 <p className={s.bandSub} style={{ maxWidth: 480 }}>{p.body}</p>
                 <Link href={p.href} className="btn btn-on-dark">
-                  {p.cta} <ArrowRight size={13} weight="bold" />
+                  {p.cta}
                 </Link>
               </div>
               <ul className={s.personaList}>

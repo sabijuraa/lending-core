@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { motion, useReducedMotion, useScroll, useTransform, type Variants } from 'framer-motion'
 import {
-  ArrowRight,
   CurrencyCircleDollar,
   HandCoins,
   SquaresFour,
@@ -11,7 +10,6 @@ import {
   ShieldCheck,
   FileCode,
   GithubLogo,
-  RocketLaunch,
 } from '@phosphor-icons/react'
 import { useData } from '@/providers/provider'
 import { TokenLogo } from '@/components/ui/TokenLogo'
@@ -50,11 +48,9 @@ export default function HomePage() {
     data.getMarkets().then(setMarkets)
   }, [data])
 
-  const note = data.source === 'mock' ? 'Illustrative' : 'Live on Base Sepolia'
-
   return (
     <>
-      <Hero stats={stats} markets={markets} note={note} />
+      <Hero stats={stats} markets={markets} />
       <ActionCards supplySlug={markets[0]?.slug ?? 'weth'} />
       <FeaturedMarkets markets={markets} />
       <HowLendingWorks />
@@ -70,8 +66,9 @@ export default function HomePage() {
 
 /* ─── Hero ───────────────────────────────────────────────── */
 
-function Hero({ stats, markets, note }: { stats: ProtocolStats | null; markets: MarketView[]; note: string }) {
+function Hero({ stats, markets }: { stats: ProtocolStats | null; markets: MarketView[] }) {
   const pairs = markets.map(m => ({ collateral: m.collateralSymbol, loan: m.loanSymbol }))
+  const available = stats ? stats.totalSupplied - stats.totalBorrowed : 0
 
   return (
     <section className={s.hero}>
@@ -85,17 +82,15 @@ function Hero({ stats, markets, note }: { stats: ProtocolStats | null; markets: 
             </motion.p>
             <motion.div variants={heroItem} className={s.ctaRow}>
               <Link href="/dashboard" className="btn btn-primary btn-lg">
-                <RocketLaunch size={16} weight="bold" />
                 Launch app
               </Link>
               <Link href="/markets" className="btn btn-ghost btn-lg">
                 Explore markets
-                <ArrowRight size={15} weight="bold" />
               </Link>
             </motion.div>
             <motion.div variants={heroItem}>
               <Link href="/how-it-works" className={s.heroLink}>
-                Understand market isolation <ArrowRight size={13} />
+                Understand market isolation
               </Link>
             </motion.div>
           </motion.div>
@@ -116,10 +111,10 @@ function Hero({ stats, markets, note }: { stats: ProtocolStats | null; markets: 
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.45, ease }}
         >
-          <Stat icon={<CurrencyCircleDollar size={16} />} label="Total Supplied" value={stats ? <CountUp value={stats.totalSupplied} format={usdCompact} /> : '...'} note={note} />
-          <Stat icon={<HandCoins size={16} />} label="Total Borrowed" value={stats ? <CountUp value={stats.totalBorrowed} format={usdCompact} /> : '...'} note={note} />
-          <Stat icon={<SquaresFour size={16} />} label="Active Markets" value={stats ? <CountUp value={stats.marketsLive} format={whole} /> : '...'} note={note} />
-          <Stat icon={<Pulse size={16} />} label="Protocol Status" value="Testnet" note="Base Sepolia" />
+          <Stat icon={<CurrencyCircleDollar size={16} />} label="Total Supplied" value={stats ? <CountUp value={stats.totalSupplied} format={usdCompact} /> : '...'} note="Across all markets" />
+          <Stat icon={<HandCoins size={16} />} label="Total Borrowed" value={stats ? <CountUp value={stats.totalBorrowed} format={usdCompact} /> : '...'} note="Outstanding loans" />
+          <Stat icon={<SquaresFour size={16} />} label="Active Markets" value={stats ? <CountUp value={stats.marketsLive} format={whole} /> : '...'} note="Each one isolated" />
+          <Stat icon={<Pulse size={16} />} label="Available Liquidity" value={stats ? <CountUp value={available} format={usdCompact} /> : '...'} note="Ready to borrow or withdraw" />
         </motion.div>
       </div>
     </section>
@@ -153,7 +148,7 @@ function FeaturedMarkets({ markets }: { markets: MarketView[] }) {
         <Reveal className={s.sectionHead}>
           <h2 className={s.sectionTitle}>Featured markets</h2>
           <Link href="/markets" className={s.textLink}>
-            View all markets <ArrowRight size={13} />
+            View all markets
           </Link>
         </Reveal>
 
@@ -241,7 +236,7 @@ function HowLendingWorks() {
             Put collateral down, borrow what you need, keep an eye on one number and close out when you are ready. That is the whole loop.
           </p>
           <Link href="/how-it-works" className={s.bandLink}>
-            <span>Learn more</span> <ArrowRight size={13} />
+            <span>Learn more</span>
           </Link>
         </Reveal>
 
@@ -297,7 +292,7 @@ function SecurityStrip() {
           </a>
           <div className={s.secCta}>
             <Link href="/markets" className="btn btn-primary">
-              Explore markets <ArrowRight size={13} weight="bold" />
+              Explore markets
             </Link>
           </div>
         </Reveal>

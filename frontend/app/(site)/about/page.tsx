@@ -2,8 +2,6 @@
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import {
-  ArrowRight,
-  ArrowSquareOut,
   Cube,
   Eye,
   HandCoins,
@@ -56,20 +54,20 @@ const timeline: { when: string; title: string; body: string; done: boolean }[] =
   },
   {
     when: 'October 2026',
-    title: 'Testnet rehearsal',
-    body: 'The full Base Sepolia deployment was scripted and rehearsed end to end, lending, borrowing and liquidating against exactly what gets deployed.',
+    title: 'Deployment rehearsal',
+    body: 'The full deployment was scripted and rehearsed end to end, lending, borrowing and liquidating against exactly what gets deployed.',
     done: true,
   },
   {
     when: 'Up next',
-    title: 'Live on Base Sepolia',
-    body: 'Contracts go live on the testnet so you can try every step with test tokens.',
+    title: 'Contracts go live',
+    body: 'The contracts are deployed on Base and connected to this app, so every market opens for supplying, borrowing and liquidating.',
     done: false,
   },
   {
     when: 'Later',
     title: 'Independent audit',
-    body: 'An outside security review before any real money is involved. It has not started yet.',
+    body: 'An outside security review of the contracts. It has not started yet.',
     done: false,
   },
 ]
@@ -281,10 +279,10 @@ export default function AboutPage() {
             </div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <a href={REPO} target="_blank" rel="noopener noreferrer" className="btn" style={{ background: '#FFFFFF', color: DARK, borderColor: '#FFFFFF', gap: 6 }}>
-                Read the code <ArrowSquareOut size={13} />
+                Read the code
               </a>
               <Link href="/how-it-works" className="btn" style={{ background: 'transparent', color: '#FFFFFF', borderColor: 'rgba(255,255,255,0.45)', gap: 6 }}>
-                How it works <ArrowRight size={13} />
+                How it works
               </Link>
             </div>
           </div>

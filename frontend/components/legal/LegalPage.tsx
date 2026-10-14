@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowUp, ArrowUpRight, CheckCircle, GithubLogo, Info, Warning } from '@phosphor-icons/react'
+import { CheckCircle, Info, Warning } from '@phosphor-icons/react'
 import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
 import styles from './legal.module.css'
 
@@ -174,9 +174,7 @@ export function LegalPage({
                   rel="noopener noreferrer"
                   className={styles.contactBtn}
                 >
-                  <GithubLogo size={16} weight="bold" />
                   Ask on GitHub
-                  <ArrowUpRight size={14} weight="bold" />
                 </a>
               </div>
             </Reveal>
@@ -191,7 +189,7 @@ export function LegalPage({
         aria-label="Back to top"
         onClick={() => window.scrollTo({ top: 0, behavior })}
       >
-        <ArrowUp size={16} weight="bold" />
+        Top
       </button>
     </div>
   )

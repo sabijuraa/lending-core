@@ -2,7 +2,6 @@
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight } from '@phosphor-icons/react'
 
 export const DARK = '#102B27'
 export const DARK_2 = '#0B201C'
@@ -121,7 +120,7 @@ export function TopicCard({
         className="topic-card-more"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 16, fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}
       >
-        Read more <ArrowRight size={12} weight="bold" />
+        Read more
       </span>
     </>
   )
@@ -319,7 +318,7 @@ export function StepsBand({
             href={linkHref}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18, textDecoration: 'none', fontSize: 13, fontWeight: 500, color: '#FFFFFF', borderBottom: '1px solid rgba(255,255,255,0.4)', paddingBottom: 2 }}
           >
-            {linkLabel ?? 'Learn more'} <ArrowRight size={13} />
+            {linkLabel ?? 'Learn more'}
           </Link>
         )}
       </div>

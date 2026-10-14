@@ -9,12 +9,13 @@ export const metadata: Metadata = {
 
 const sections: LegalSection[] = [
   {
-    id: 'testnet',
-    title: 'Testnet tokens only',
+    id: 'your-funds',
+    title: 'You can lose what you deposit',
     body: (
       <p>
-        lending-core runs on the Base Sepolia test network. The assets used here are test tokens and have no real world
-        value. Treat everything you do here as practice, and never send real funds to these contracts.
+        lending-core is non custodial software. The assets you supply or post as collateral sit in public smart contracts,
+        not with a company, and nobody can reverse a transaction once it is confirmed. Only deposit what you can afford
+        to lose, and start with small amounts while you learn how a market behaves.
       </p>
     ),
   },
@@ -125,7 +126,7 @@ export default function RiskPage() {
   return (
     <LegalPage
       title="Risk disclosure"
-      intro="Lending and borrowing on chain carries real risk, even on a testnet. Here is what can go wrong and how each market is designed to limit it."
+      intro="Lending and borrowing on chain carries real risk. Here is what can go wrong and how each market is designed to limit it."
       updated="14 October 2026"
       readMinutes={4}
       current="/risk"

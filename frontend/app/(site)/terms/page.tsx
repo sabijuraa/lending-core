@@ -4,7 +4,7 @@ import { Callout, LegalPage, type LegalSection } from '@/components/legal/LegalP
 
 export const metadata: Metadata = {
   title: 'Terms of use | lending-core',
-  description: 'The plain English terms for using lending-core, a non-custodial lending protocol running on the Base Sepolia testnet.',
+  description: 'The plain English terms for using lending-core, a non-custodial lending protocol on Base.',
 }
 
 const sections: LegalSection[] = [
@@ -14,7 +14,7 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>
-          lending-core is open source software. It is a set of smart contracts on the Base Sepolia test network and this
+          lending-core is open source software. It is a set of smart contracts on the Base network and this
           website, which helps you talk to those contracts from your own wallet.
         </p>
         <p>
@@ -24,17 +24,18 @@ const sections: LegalSection[] = [
     ),
   },
   {
-    id: 'testnet',
-    title: 'A testnet product',
+    id: 'your-assets',
+    title: 'Your assets and your transactions',
     body: (
       <>
         <p>
-          Everything here runs on Base Sepolia, a public test network. The tokens you supply and borrow are test tokens
-          with no real world value. The dollar figures you see are for illustration and do not represent money you can
-          withdraw.
+          The assets you supply, borrow or post as collateral are real tokens held by public smart contracts. Every action
+          is a transaction you sign in your own wallet, and once it is confirmed on chain it cannot be reversed by us or
+          anyone else.
         </p>
-        <Callout tone="info" title="Never send real funds">
-          Do not send mainnet assets to any address shown on this site. They would not be usable here and could be lost.
+        <Callout tone="info" title="Check before you sign">
+          Always confirm the network, the token and the amount in your wallet before approving a transaction. Tokens sent to
+          the wrong address cannot be recovered.
         </Callout>
       </>
     ),
@@ -133,7 +134,7 @@ export default function TermsPage() {
       readMinutes={3}
       current="/terms"
       summary={[
-        'lending-core runs on a testnet. Tokens here have no real value.',
+        'Every action is a transaction you sign and it cannot be reversed.',
         'It is non-custodial. Only your wallet can move your funds.',
         'The software is experimental, unaudited and comes with no warranty.',
         'Market rules are fixed at creation and nobody can change them.',

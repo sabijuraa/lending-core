@@ -2,11 +2,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowRight, Heartbeat, Wallet, Sliders } from '@phosphor-icons/react'
+import { Heartbeat, Wallet, Sliders } from '@phosphor-icons/react'
 import { Reveal } from '@/components/ui/Reveal'
 import s from './home.module.css'
 
-// Example position used purely to illustrate how the health factor reacts to price.
+// Example position that shows how the health factor reacts to price.
 const COLLATERAL = 2
 const START_PRICE = 3000
 const DEBT = 3000
@@ -43,7 +43,7 @@ export function PositionShowcase() {
               <li><Wallet size={18} weight="duotone" /> Add collateral or repay from the same screen</li>
             </ul>
             <Link href="/dashboard" className="btn btn-primary">
-              Open your dashboard <ArrowRight size={13} weight="bold" />
+              Open your dashboard
             </Link>
           </Reveal>
 
@@ -97,7 +97,7 @@ export function PositionShowcase() {
                 className={s.slider}
                 aria-label="WETH price change"
               />
-              <p className={s.showcaseFoot}>Illustration only. Real positions use live market prices.</p>
+              <p className={s.showcaseFoot}>Example position. Your dashboard uses live market prices.</p>
             </motion.div>
           </Reveal>
         </div>

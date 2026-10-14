@@ -4,12 +4,9 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import {
-  ArrowRight,
-  ArrowSquareOut,
   BookOpen,
   Code,
   Cube,
-  Plus,
   ShieldCheck,
 } from '@phosphor-icons/react'
 import {
@@ -177,8 +174,8 @@ const FAQ: { q: string; a: string }[] = [
     a: 'It stays there. Every market has its own collateral, its own price feed and its own rules, so a problem in one market cannot drain another.',
   },
   {
-    q: 'Is this live with real money?',
-    a: 'Not yet. lending-core runs on the Base Sepolia testnet and the contracts have not been externally audited. Use test tokens and treat it as a preview.',
+    q: 'Has lending-core been audited?',
+    a: 'Not yet. The contracts are heavily tested but have not had an external audit. Start with amounts you can afford to lose and read the risk disclosures first.',
   },
 ]
 
@@ -380,9 +377,7 @@ function Faq({ items }: { items: { q: string; a: string }[] }) {
               }}
             >
               {it.q}
-              <motion.span animate={{ rotate: on ? 45 : 0 }} transition={{ duration: 0.2 }} style={{ display: 'inline-flex', color: 'var(--accent)', flexShrink: 0 }}>
-                <Plus size={16} weight="bold" />
-              </motion.span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', flexShrink: 0 }}>{on ? 'Close' : 'Open'}</span>
             </button>
             <AnimatePresence initial={false}>
               {on && (
@@ -455,16 +450,16 @@ function BuildCard({ onDocs }: { onDocs: () => void }) {
           marginBottom: 28,
         }}
       >
-        View developer docs <ArrowRight size={13} />
+        View developer docs
       </button>
       <div style={{ marginTop: 'auto', position: 'relative' }}>
         <CodeBlock tone="inset">
           <K>import</K> {'{'} createPublicClient, http {'}'}{'\n'}
           {'  '}<K>from</K> <S>&apos;viem&apos;</S>{'\n'}
-          <K>import</K> {'{'} baseSepolia {'}'} <K>from</K> <S>&apos;viem/chains&apos;</S>{'\n'}
+          <K>import</K> {'{'} base {'}'} <K>from</K> <S>&apos;viem/chains&apos;</S>{'\n'}
           {'\n'}
           <K>const</K> client = createPublicClient({'{'}{'\n'}
-          {'  '}chain: baseSepolia,{'\n'}
+          {'  '}chain: base,{'\n'}
           {'  '}transport: http(),{'\n'}
           {'}'}){'\n'}
           {'\n'}
@@ -561,7 +556,7 @@ function RiskTab() {
           <li>Covered by unit, fuzz and invariant tests</li>
           <li>Immutable, with no upgrade path and no admin key</li>
         </ul>
-        <p>Treat it as testnet software. <Link href="/security" style={{ color: 'var(--accent)', fontWeight: 600 }}>Read the security and risk disclosures</Link></p>
+        <p>The contracts have not had an external audit yet. <Link href="/security" style={{ color: 'var(--accent)', fontWeight: 600 }}>Read the security and risk disclosures</Link></p>
       </DocSection>
     </TwoCol>
   )
@@ -694,7 +689,7 @@ function DevelopersTab() {
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-4)' }}>ADR {String(a.n).padStart(4, '0')}</span>
-                <ArrowSquareOut size={12} style={{ color: 'var(--text-4)' }} />
+               
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)', marginBottom: 6 }}>{a.title}</div>
               <div style={{ fontSize: 12.5, color: 'var(--text-3)', lineHeight: 1.6 }}>{a.body}</div>
@@ -747,7 +742,7 @@ function TwoCol({
           className="btn btn-secondary btn-sm"
           style={{ marginTop: 18, alignSelf: 'flex-start', gap: 6 }}
         >
-          View on GitHub <ArrowSquareOut size={12} />
+          View on GitHub
         </a>
         <style>{`.learn-nav-link:hover { background: var(--surface); color: var(--accent) !important; }`}</style>
       </nav>
@@ -773,7 +768,7 @@ function TwoCol({
             className="btn"
             style={{ background: '#FFFFFF', color: DARK, borderColor: '#FFFFFF', gap: 6 }}
           >
-            Explore markets <ArrowRight size={13} />
+            Explore markets
           </Link>
         </div>
         </Reveal>

@@ -11,8 +11,6 @@ import {
   Eye,
   ChartLineDown,
   Lightning,
-  ArrowRight,
-  GithubLogo,
 } from '@phosphor-icons/react'
 
 const REPO = 'https://github.com/sabijuraa/lending-core'
@@ -28,7 +26,7 @@ const TABS: { id: Tab; label: string; hash: string }[] = [
 const checks = [
   ['Unit and fuzz tests', 'Every action you can take is tested, including with thousands of random amounts and jumps forward in time.'],
   ['Invariant tests', 'Random sequences of deposits, loans, repayments, crashes and liquidations run over and over, and after every step we check that the market can still pay everyone back.'],
-  ['Deploy rehearsal', 'The exact deployment used for the testnet is rehearsed in the tests, then a full lend, borrow and liquidate journey is run against it.'],
+  ['Deploy rehearsal', 'The exact production deployment is rehearsed in the tests, then a full lend, borrow and liquidate journey is run against it.'],
   ['Threat model', 'A public document lists who has to be trusted, which attacks are defended against and which risks are accepted.'],
 ]
 
@@ -48,7 +46,7 @@ const knownRisks = [
 ]
 
 const disclosures = [
-  ['Experimental software', 'lending-core is a testnet deployment. Do not use it with funds you cannot afford to lose.'],
+  ['New software', 'lending-core is young software. Do not use it with funds you cannot afford to lose.'],
   ['No external audit', 'The contracts have been tested internally but no third party has reviewed them.'],
   ['No insurance', 'There is no insurance fund. Losses in a market are carried by the lenders of that market.'],
   ['Isolated losses only', 'Bad debt in one market never touches another market, but it is fully realized inside the market where it happens.'],
@@ -135,10 +133,10 @@ function AuditStatus({ onDisclosures }: { onDisclosures: () => void }) {
     { t: 'Smart contracts tested', d: `${checks.length} of ${checks.length} internal checks complete`, done: true },
     {
       t: 'Source code',
-      d: <a href={REPO} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><GithubLogo size={12} /> GitHub</a>,
+      d: <a href={REPO} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>GitHub</a>,
       done: true,
     },
-    { t: 'Deployment addresses', d: 'Base Sepolia, listed here once broadcast', done: false },
+    { t: 'Deployment addresses', d: 'Listed here once the contracts are deployed', done: false },
   ]
 
   return (
@@ -226,7 +224,7 @@ function AuditStatus({ onDisclosures }: { onDisclosures: () => void }) {
         onClick={onDisclosures}
         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, fontWeight: 600, color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 6 }}
       >
-        View full risk disclosure <ArrowRight size={13} weight="bold" />
+        View full risk disclosure
       </button>
     </>
   )

@@ -26,7 +26,7 @@ const sections: LegalSection[] = [
     body: (
       <>
         <p>
-          When you supply, borrow, repay or liquidate, your wallet sends a transaction to the Base Sepolia network. That
+          When you supply, borrow, repay or liquidate, your wallet sends a transaction to the Base network. That
           transaction, your address and your positions become public and permanent on the blockchain.
         </p>
         <Callout tone="info" title="Anyone can read it">
@@ -62,7 +62,7 @@ const sections: LegalSection[] = [
             time.
           </li>
           <li>
-            <strong>The Base Sepolia public RPC</strong> receives the read requests and transactions your browser sends
+            <strong>The public Base RPC endpoint</strong> receives the read requests and transactions your browser sends
             to the network.
           </li>
           <li>

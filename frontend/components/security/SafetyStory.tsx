@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'framer-motion'
-import { ArrowRight, Cube, Eye, Lock, Scales } from '@phosphor-icons/react'
+import { Cube, Eye, Lock, Scales } from '@phosphor-icons/react'
 import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
 
 const DARK = '#102B27'
@@ -143,7 +143,7 @@ export function SafetyStory() {
         </Stagger>
         <div style={{ position: 'relative', display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
           <Link href="/how-it-works" className="btn" style={{ background: '#FFFFFF', color: DARK, borderColor: '#FFFFFF', gap: 6 }}>
-            See how it works <ArrowRight size={13} />
+            See how it works
           </Link>
           <a
             href="https://github.com/sabijuraa/lending-core/blob/main/THREAT_MODEL.md"

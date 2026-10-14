@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowRight, PiggyBank, HandCoins, TrendUp, Lightning } from '@phosphor-icons/react'
+import { PiggyBank, HandCoins, TrendUp, Lightning } from '@phosphor-icons/react'
 import { Reveal, Stagger, StaggerItem } from '@/components/ui/Reveal'
 import s from './home.module.css'
 
@@ -56,7 +56,7 @@ export function ActionCards({ supplySlug }: { supplySlug: string }) {
                 <h3 className={s.actionTitle}>{a.title}</h3>
                 <p className={s.actionBody}>{a.body}</p>
                 <Link href={a.href} className={s.actionLink}>
-                  {a.cta} <ArrowRight size={13} weight="bold" />
+                  {a.cta}
                 </Link>
               </motion.div>
             </StaggerItem>
