@@ -1,108 +1,144 @@
-'use client'
-import { ClipReveal } from '@/components/ui/ClipReveal'
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { Callout, LegalPage, type LegalSection } from '@/components/legal/LegalPage'
+
+export const metadata: Metadata = {
+  title: 'Terms of use | lending-core',
+  description: 'The plain English terms for using lending-core, a non-custodial lending protocol running on the Base Sepolia testnet.',
+}
+
+const sections: LegalSection[] = [
+  {
+    id: 'what-this-is',
+    title: 'What lending-core is',
+    body: (
+      <>
+        <p>
+          lending-core is open source software. It is a set of smart contracts on the Base Sepolia test network and this
+          website, which helps you talk to those contracts from your own wallet.
+        </p>
+        <p>
+          By using the website or the contracts you agree to these terms. If you do not agree, please do not use them.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'testnet',
+    title: 'A testnet product',
+    body: (
+      <>
+        <p>
+          Everything here runs on Base Sepolia, a public test network. The tokens you supply and borrow are test tokens
+          with no real world value. The dollar figures you see are for illustration and do not represent money you can
+          withdraw.
+        </p>
+        <Callout tone="info" title="Never send real funds">
+          Do not send mainnet assets to any address shown on this site. They would not be usable here and could be lost.
+        </Callout>
+      </>
+    ),
+  },
+  {
+    id: 'your-wallet',
+    title: 'You stay in control of your funds',
+    body: (
+      <>
+        <p>
+          lending-core is non-custodial. We never hold your funds. Your assets sit in the protocol contracts, and only
+          you can move them with your wallet.
+        </p>
+        <ul>
+          <li>We cannot access, freeze or recover your funds.</li>
+          <li>We cannot reverse a transaction once it is confirmed on chain.</li>
+          <li>If you lose access to your wallet, nobody can restore it for you.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'no-warranty',
+    title: 'No warranty',
+    body: (
+      <>
+        <p>
+          lending-core is experimental software provided as is. There is no promise that it works without errors, that the
+          website is always online, or that the numbers it shows are always accurate. You use it at your own risk.
+        </p>
+        <Callout title="Not audited">
+          The contracts have not been reviewed by an external security auditor. Read the{' '}
+          <Link href="/risk">risk disclosure</Link> before you use them.
+        </Callout>
+      </>
+    ),
+  },
+  {
+    id: 'no-insurance',
+    title: 'No insurance',
+    body: (
+      <p>
+        Smart contract bugs are possible. Price oracles can fail or be manipulated. There is no insurance fund and no
+        backstop that protects suppliers or borrowers if something goes wrong.
+      </p>
+    ),
+  },
+  {
+    id: 'fixed-rules',
+    title: 'Rules that do not change',
+    body: (
+      <>
+        <p>
+          Each market sets its parameters once, when it is created. After that, nobody can change them. There is no
+          governance vote, no admin key and no upgrade path for the contracts.
+        </p>
+        <p>
+          That means we cannot step in to change a market on your behalf, even if we wanted to.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'your-responsibilities',
+    title: 'Your responsibilities',
+    body: (
+      <>
+        <p>The contracts have no knowledge of where you are or which laws apply to you. You are responsible for</p>
+        <ul>
+          <li>following the laws and regulations that apply where you live,</li>
+          <li>keeping your wallet and recovery phrase safe,</li>
+          <li>checking every transaction in your wallet before you sign it,</li>
+          <li>understanding the risks of lending, borrowing and liquidation.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'changes',
+    title: 'Changes to these terms',
+    body: (
+      <p>
+        The deployed contracts cannot be changed, so the rules they enforce stay the same. We may update this page to make
+        it clearer. When we do, the date at the top changes.
+      </p>
+    ),
+  },
+]
 
 export default function TermsPage() {
-  const sections = [
-    {
-      title: 'No warranty',
-      content: 'lending-core is experimental software. Use at your own risk.',
-    },
-    {
-      title: 'No custodian',
-      content: 'We never hold your funds. The protocol contracts hold your funds. We cannot access, freeze, or recover them.',
-    },
-    {
-      title: 'No insurance',
-      content: 'Smart contract risk is real. Oracle manipulation is real. No insurance fund protects depositors.',
-    },
-    {
-      title: 'No governance',
-      content: 'Protocol parameters are fixed at deployment. We cannot change them. No vote can change them.',
-    },
-    {
-      title: 'Jurisdiction',
-      content: 'These contracts operate at the protocol layer. They have no knowledge of geography or regulation. You are responsible for compliance with applicable law.',
-    },
-    {
-      title: 'Updates',
-      content: 'These terms cannot be updated because there is nothing to update. The contracts cannot be changed.',
-    },
-  ]
-
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-1)' }}>
-      {/* Header */}
-      <section style={{ padding: '80px 0 64px', background: 'var(--bg-0)', borderBottom: '0.5px solid var(--border-default)' }}>
-        <div className="section-container">
-          <ClipReveal type="clip">
-            <h1 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(40px, 5vw, 56px)',
-              fontWeight: 800,
-              letterSpacing: '-0.03em',
-              color: 'var(--text-1)',
-              marginBottom: 16,
-            }}>
-              Terms of Use
-            </h1>
-          </ClipReveal>
-          <ClipReveal type="fade" delay={0.2}>
-            <p style={{ fontSize: 17, color: 'var(--text-2)', maxWidth: 520 }}>
-              Read this before using the protocol.
-            </p>
-          </ClipReveal>
-        </div>
-      </section>
-
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 48px' }}>
-        {sections.map((section, i) => (
-          <ClipReveal key={section.title} type="fade" delay={i * 0.08}>
-            <div className="card-base" style={{ padding: 32, marginBottom: 24 }}>
-              <h2 style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 20,
-                fontWeight: 700,
-                color: 'var(--text-1)',
-                marginBottom: 16,
-                letterSpacing: '-0.02em',
-              }}>
-                {section.title}
-              </h2>
-              <p style={{ fontSize: 15, color: 'var(--text-2)', lineHeight: 1.8, margin: 0 }}>
-                {section.content}
-              </p>
-            </div>
-          </ClipReveal>
-        ))}
-
-        {/* Final note */}
-        <ClipReveal type="fade" delay={0.5}>
-          <div style={{
-            padding: 40,
-            background: 'linear-gradient(145deg, rgba(37,99,235,0.04) 0%, rgba(124,58,237,0.02) 100%)',
-            border: '0.5px solid var(--accent-border)',
-            borderRadius: 'var(--r-xl)',
-            textAlign: 'center',
-          }}>
-            <p style={{
-              fontSize: 16,
-              color: 'var(--text-1)',
-              lineHeight: 1.8,
-              fontWeight: 500,
-              margin: 0,
-            }}>
-              If you&apos;ve read this and you understand the risks, the protocol is ready for you.
-              <br />
-              If you haven&apos;t, please read it again.
-            </p>
-          </div>
-        </ClipReveal>
-
-        {/* Last updated */}
-        <div style={{ textAlign: 'center', marginTop: 48, fontSize: 13, color: 'var(--text-4)' }}>
-          Last updated: July 2026
-        </div>
-      </div>
-    </div>
+    <LegalPage
+      title="Terms of use"
+      intro="Please read this before you use lending-core. It explains what the protocol is, what it is not, and who is responsible for what."
+      updated="14 October 2026"
+      readMinutes={3}
+      current="/terms"
+      summary={[
+        'lending-core runs on a testnet. Tokens here have no real value.',
+        'It is non-custodial. Only your wallet can move your funds.',
+        'The software is experimental, unaudited and comes with no warranty.',
+        'Market rules are fixed at creation and nobody can change them.',
+      ]}
+      sections={sections}
+    />
   )
 }
