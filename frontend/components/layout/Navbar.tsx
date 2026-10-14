@@ -1,24 +1,22 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
-import { injected } from 'wagmi/connectors'
-import { List, X, Wallet } from '@phosphor-icons/react'
-import { truncateAddress } from '@/lib/formatting'
+import { List, X } from '@phosphor-icons/react'
+import { Logo } from '@/components/ui/Logo'
 
 const NAV_LINKS = [
   { href: '/', label: 'Overview' },
+  { href: '/how-it-works', label: 'How it works' },
   { href: '/markets', label: 'Markets' },
-  { href: '/portfolio', label: 'Portfolio' },
-  { href: '/liquidations', label: 'Liquidations' },
   { href: '/docs', label: 'Learn & Docs' },
+  { href: '/security', label: 'Security' },
+  { href: '/about', label: 'About' },
 ]
 
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/'
-  if (href === '/docs') return pathname.startsWith('/docs') || pathname === '/how-it-works'
   return pathname === href || pathname.startsWith(href + '/')
 }
 
@@ -26,11 +24,6 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const pathname = usePathname()
-  const router = useRouter()
-  const connectWallet = () => connect({ connector: injected() }, { onSuccess: () => router.push('/dashboard') })
-  const { address, isConnected } = useAccount()
-  const { connect } = useConnect()
-  const { disconnect } = useDisconnect()
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 10)
@@ -64,19 +57,7 @@ export function Navbar() {
           WebkitBackdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
         }}
       >
-        <Link
-          href="/"
-          style={{
-            fontSize: 17,
-            fontWeight: 600,
-            color: 'var(--primary)',
-            letterSpacing: '-0.02em',
-            textDecoration: 'none',
-            flexShrink: 0,
-          }}
-        >
-          lending-core
-        </Link>
+        <Logo />
 
         <div className="nav-links" style={{ display: 'flex', alignItems: 'center', gap: 32, marginLeft: 56, height: '100%' }}>
           {NAV_LINKS.map((link) => {
@@ -96,16 +77,9 @@ export function Navbar() {
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          {isConnected && address ? (
-            <button onClick={() => disconnect()} className="btn btn-secondary lc-nav-btn" title="Disconnect">
-              <span className="lc-dot" style={{ color: 'var(--positive)' }} />
-              {truncateAddress(address)}
-            </button>
-          ) : (
-            <button onClick={connectWallet} className="btn btn-primary lc-nav-btn">
-              Connect Wallet
-            </button>
-          )}
+          <Link href="/dashboard" className="btn btn-primary lc-nav-btn hide-mobile-sm">
+            Launch app
+          </Link>
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
@@ -170,24 +144,14 @@ export function Navbar() {
               transition={{ delay: 0.25 }}
               style={{ marginTop: 28, display: 'flex', flexDirection: 'column', gap: 12 }}
             >
-              {isConnected && address ? (
-                <button
-                  onClick={() => { disconnect(); setMobileOpen(false) }}
-                  className="btn btn-secondary"
-                  style={{ width: '100%', fontSize: 15, padding: '14px 24px' }}
-                >
-                  Disconnect {truncateAddress(address)}
-                </button>
-              ) : (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => { connectWallet(); setMobileOpen(false) }}
-                  style={{ width: '100%', fontSize: 15, padding: '14px 24px' }}
-                >
-                  <Wallet size={16} weight="bold" />
-                  Connect Wallet
-                </button>
-              )}
+              <Link
+                href="/dashboard"
+                className="btn btn-primary"
+                onClick={() => setMobileOpen(false)}
+                style={{ width: '100%', fontSize: 15, padding: '14px 24px' }}
+              >
+                Launch app
+              </Link>
             </motion.div>
           </motion.div>
         )}
@@ -226,8 +190,12 @@ export function Navbar() {
           .nav-links { display: none !important; }
           .mobile-btn { display: block !important; }
         }
+        @media (max-width: 1100px) {
+          .nav-links { gap: 22px !important; margin-left: 36px !important; }
+        }
         @media (max-width: 480px) {
           .lc-nav { padding: 0 16px !important; }
+          .hide-mobile-sm { display: none !important; }
           .lc-nav-btn { padding: 8px 12px; font-size: 12px; }
         }
       `}</style>

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Copy, Check, ArrowSquareOut } from '@phosphor-icons/react'
 import { truncateAddress } from '@/lib/formatting'
 import { ADDRESSES, isDeployed } from '@/lib/addresses'
+import { Logo } from '@/components/ui/Logo'
 
 function CopyRow({ label, address }: { label: string; address: string }) {
   const [copied, setCopied] = useState(false)
@@ -45,6 +46,7 @@ const cols = [
       { label: 'Portfolio', href: '/portfolio' },
       { label: 'Liquidations', href: '/liquidations' },
       { label: 'Analytics', href: '/analytics' },
+      { label: 'Transactions', href: '/transactions' },
     ]
   },
   {
@@ -60,8 +62,8 @@ const cols = [
     title: 'Developers',
     links: [
       { label: 'GitHub', href: 'https://github.com/sabijuraa/lending-core', ext: true },
-      { label: 'Smart Contracts', href: '/docs' },
-      { label: 'MIT License', href: 'https://opensource.org/licenses/MIT', ext: true },
+      { label: 'Smart contracts', href: '/docs?tab=developers' },
+      { label: 'Integration guide', href: '/docs?tab=developers' },
     ]
   },
   {
@@ -80,36 +82,14 @@ export function Footer() {
       <div className="section-container" style={{ padding: '56px 80px 28px' }}>
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1.8fr 1fr 1fr 1fr',
-          gap: 56,
+          gridTemplateColumns: '1.6fr 1fr 1fr 1fr 1fr',
+          gap: 40,
           marginBottom: 48
         }}>
           {/* Brand column */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <polygon
-                  points="12,1 22,6.5 22,17.5 12,23 2,17.5 2,6.5"
-                  stroke="var(--accent)"
-                  strokeWidth="1.2"
-                  fill="none"
-                />
-                <polygon
-                  points="12,5 18,8.5 18,15.5 12,19 6,15.5 6,8.5"
-                  stroke="var(--accent)"
-                  strokeWidth="0.6"
-                  fill="rgba(23,77,64,0.06)"
-                  transform="rotate(15 12 12)"
-                />
-              </svg>
-              <span style={{
-                fontSize: 15,
-                fontWeight: 600,
-                color: 'var(--text-1)',
-                letterSpacing: '-0.02em'
-              }}>
-                lending-core
-              </span>
+            <div style={{ marginBottom: 14 }}>
+              <Logo size={22} />
             </div>
             <p style={{
               fontSize: 14,
@@ -118,13 +98,14 @@ export function Footer() {
               marginBottom: 20,
               maxWidth: 260
             }}>
-              Isolated-market lending on Base. Each market stands alone, transparent rates, no shared risk.
+              Isolated lending markets. Each market stands alone, with transparent rates and no shared risk.
             </p>
             <div style={{ display: 'flex', gap: 10 }}>
               <a
                 href="https://github.com/sabijuraa/lending-core"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="lending-core on GitHub"
                 style={{
                   color: 'var(--text-3)',
                   transition: 'color 150ms ease, border-color 150ms ease',
@@ -194,42 +175,39 @@ export function Footer() {
           ))}
         </div>
 
+        {isDeployed && (
+          <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '18px 0 6px', display: 'flex', flexWrap: 'wrap', gap: '4px 40px', justifyContent: 'center' }}>
+            <CopyRow label="LendingCore" address={ADDRESSES.LendingCore} />
+            <CopyRow label="KinkedRateModel" address={ADDRESSES.KinkedRateModel} />
+          </div>
+        )}
+
         {/* Bottom bar */}
         <div style={{
           borderTop: '1px solid var(--border-subtle)',
           paddingTop: 20,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16
+          textAlign: 'center',
         }}>
           <span style={{ fontSize: 13, color: 'var(--text-4)' }}>
-            Built on Base Sepolia. Engineered by Fizan Ali
-          </span>
-          {isDeployed && (
-            <div>
-              <CopyRow label="LendingCore" address={ADDRESSES.LendingCore} />
-              <CopyRow label="KinkedRateModel" address={ADDRESSES.KinkedRateModel} />
-            </div>
-          )}
-          <span style={{ fontSize: 13, color: 'var(--text-4)' }}>
-            MIT License
+            © 2026 lending-core. All rights reserved.
           </span>
         </div>
       </div>
 
       <style jsx>{`
         @media (max-width: 1024px) {
+          footer > div { padding: 48px 24px 24px !important; }
           footer > div > div:first-child {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 40px !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 32px !important;
           }
+          footer > div > div:first-child > div:first-child { grid-column: 1 / -1; }
         }
         @media (max-width: 640px) {
+          footer > div { padding: 40px 16px 24px !important; }
           footer > div > div:first-child {
-            grid-template-columns: 1fr !important;
-            gap: 32px !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 28px 20px !important;
           }
         }
       `}</style>

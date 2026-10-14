@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { ArrowRight, GithubLogo, BookOpen, ChatCircleDots } from '@phosphor-icons/react'
+import { GithubLogo, BookOpen, ChatCircleDots } from '@phosphor-icons/react'
 import { Reveal } from '@/components/ui/Reveal'
 import s from './cta-band.module.css'
 
@@ -9,7 +9,7 @@ const REPO = 'https://github.com/sabijuraa/lending-core'
 /** Dark pre footer band with a closing call to action and real ways to reach the team. */
 export function CtaBand({
   title = 'Lend with confidence. Borrow without contagion.',
-  body = 'Every market stands on its own, so the risk you take is the risk you chose. Try it on the Base Sepolia testnet with test tokens.',
+  body = 'Every market stands on its own, so the risk you take is the risk you chose. Supply, borrow and manage every position from one place.',
 }: {
   title?: string
   body?: string
@@ -26,7 +26,7 @@ export function CtaBand({
           <p className={s.body}>{body}</p>
           <div className={s.buttons}>
             <Link href="/dashboard" className={s.primary}>
-              Launch app <ArrowRight size={14} weight="bold" />
+              Launch app
             </Link>
             <Link href="/how-it-works" className={s.secondary}>
               How it works
@@ -46,7 +46,6 @@ export function CtaBand({
                 <strong>Open an issue</strong>
                 <em>Report a bug or suggest a feature</em>
               </span>
-              <ArrowRight size={13} className={s.linkArrow} />
             </a>
             <Link href="/docs" className={s.link}>
               <BookOpen size={18} weight="duotone" />
@@ -54,7 +53,6 @@ export function CtaBand({
                 <strong>Read the docs</strong>
                 <em>Guides for savers, borrowers and builders</em>
               </span>
-              <ArrowRight size={13} className={s.linkArrow} />
             </Link>
             <a href={REPO} target="_blank" rel="noopener noreferrer" className={s.link}>
               <GithubLogo size={18} weight="duotone" />
@@ -62,7 +60,6 @@ export function CtaBand({
                 <strong>Browse the source</strong>
                 <em>Every contract, test and decision</em>
               </span>
-              <ArrowRight size={13} className={s.linkArrow} />
             </a>
           </div>
         </Reveal>
